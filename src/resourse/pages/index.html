@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>기관 정보</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+  <!-- 헤더 -->
+  <header class="bg-blue-800 text-white py-4 text-center text-xl font-semibold">
+    공모전 정보 목록
+  </header>
+
+  <!-- 카드 목록 -->
+  <main class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-6">
+    {% for item in items %}
+    <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+        <!-- 반응형 이미지 박스 -->
+        <div class="relative w-full aspect-[4/3]">
+            <img src="{{ item.img }}" alt="기관 이미지"
+            class="absolute inset-0 w-full h-full object-cover rounded-t-2xl">
+        </div>
+        <div class="p-4 flex flex-col space-y-2">
+            <h3 class="text-lg font-bold text-gray-800">{{ item.title }}</h3>
+            <p class="text-sm text-blue-600 font-semibold">{{ item.date }} 까지 제출</p>
+            <p class="text-sm text-gray-600 opacity-60">{{ item.organize }}</p>
+        </div>
+    </div>
+    {% endfor %}
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-blue-800 text-white text-center py-3">
+    &copy; 2025 공모전 정보 페이지
+  </footer>
+
+</body>
+</html>
