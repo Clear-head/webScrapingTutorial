@@ -15,18 +15,21 @@
   <!-- 카드 목록 -->
   <main class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-6">
     {% for item in items %}
-    <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-        <!-- 반응형 이미지 박스 -->
-        <div class="relative w-full aspect-[4/3]">
-            <img src="{{ item.img }}" alt="기관 이미지"
-            class="absolute inset-0 w-full h-full object-cover rounded-t-2xl">
-        </div>
-        <div class="p-4 flex flex-col space-y-2">
-            <h3 class="text-lg font-bold text-gray-800">{{ item.title }}</h3>
-            <p class="text-sm text-blue-600 font-semibold">{{ item.date }} 까지 제출</p>
-            <p class="text-sm text-gray-600 opacity-60">{{ item.organize }}</p>
-        </div>
-    </div>
+    <a target="_blank" href="{{ item.link }}">
+      <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+          <!-- 반응형 이미지 박스 -->
+          
+            <div class="relative w-full aspect-[4/3]">
+                <img src="{{ item.img }}" alt="기관 이미지"
+                class="absolute inset-0 w-full h-full object-cover rounded-t-2xl">
+            </div>
+            <div class="p-4 flex flex-col space-y-2">
+                <h3 class="text-lg font-bold text-gray-800">{{ item.title }}</h3>
+                <p class="text-sm text-blue-600 font-semibold">{{ item.date }}</p>
+                <p class="text-sm text-gray-600 opacity-60">{{ item.organize }}</p>
+            </div>
+      </div>
+    </a>
     {% endfor %}
   </main>
 

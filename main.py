@@ -1,18 +1,18 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from src.scarping import scrap_html
+from scarp.scrap_method import scrap_template
 
 import uvicorn
 
 templates = Jinja2Templates(directory="src/resourse/pages")
 app = FastAPI()
 
-# app.include_router(router)
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    items = scrap_html()
+    items = scrap_template()
+    print(items[0])
 
     if not items:
         return RedirectResponse(url="/false")

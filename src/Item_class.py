@@ -1,12 +1,21 @@
 from datetime import datetime, timedelta
+from pydantic import BaseModel, field_validator
 
-class item_info:
-    def __init__(self, img, title, organize, date):
-        self.img = img
-        self.title = title
-        self.organize = organize
-        self.date = self.__set_date(date)
+class item_info(BaseModel):
+    img: str
+    title: str
+    organize: str
+    date: str
+    link: str
 
-    def __set_date(self, date):
-        now = datetime.now() + timedelta(days=int(date[2:]))
-        return now.strftime('%Y-%m-%d')
+    @field_validator('date', mode='before')
+    @classmethod
+    def convert_date(cls, value):
+        if value.startswith("D-"):
+            try:
+                days = int(value[2:])
+                date_obj = datetime.now() + timedelta(days=days)
+                return date_obj.strftime("%Y-%m-%d") + " 까지"
+            except ValueError:
+                return "마감"
+        return "마감"
