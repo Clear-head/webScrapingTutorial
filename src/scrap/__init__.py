@@ -1,0 +1,1 @@
+from .scrap_method import scrap_linkar, scrap_allfor
