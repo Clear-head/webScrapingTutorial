@@ -125,8 +125,63 @@ async def scrap_linkar() -> bool | list[item_info]:
 
             if all(item):
                 new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-                print(new.img, new.title)
                 items.append(new)
         driver.close()
+
+    return list(items)
+
+
+def scrap_wivity() -> bool | list[item_info]:
+    URL = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
+    FRONT_URL = "https://www.wevity.com/index.php"
+
+    items = []
+
+    for page_cnt in range(1, 3):
+
+        res = requests.get(URL+f"&gp={page_cnt}", headers=HEAD)
+        if res.status_code != 200:
+            break
+
+        soup = BeautifulSoup(res.content, 'html.parser')
+
+        #   각 공모전별 상세 페이지 링크
+        details = soup.select("ul.list > li > div.tit > a ")
+
+        for detail in details:
+            detail_res = requests.get(FRONT_URL+detail.get("href"))
+            if detail_res.status_code != 200:
+                continue
+
+            detail_soup = BeautifulSoup(detail_res.content, 'html.parser')
+
+            #   이미지, 공모전 이름, 주관사, 마감일, 상세 링크
+            item = [False, False, False, False, False]
+
+            #   img
+            item[0] = "https://www.wevity.com" + detail_soup.select_one("div.thumb > img").get("src")
+
+            #   title
+            item[1] = detail_soup.select_one("#container > div.content-area > div.content-wrap > div.content > div > div.tit-area").text
+
+
+            #   주관사, 마감일, 상세링크 모음
+            cards = detail_soup.select("ul.cd-info-list > li")
+            if "일반인" not in cards[1].text.replace(",", "").split():
+                continue
+
+
+            #   주관사
+            item[2] = cards[2].text.strip().split("\n")[1].replace("\t\t\t\t\t", "")
+
+            #   마감일
+            item[3] = cards[4].text.strip().split()[-1]
+
+            #   홈페이지
+            item[4] = cards[7].text.strip().split()[-1]
+
+            if all(item):
+                new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                items.append(new)
 
     return list(items)
