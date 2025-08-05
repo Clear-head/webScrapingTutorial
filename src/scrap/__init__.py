@@ -1,1 +1,1 @@
-from .scrap_method import scrap, scrap_linkar
+from .batch import scrap_batch

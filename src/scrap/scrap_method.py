@@ -1,26 +1,20 @@
 import time
 from re import search
-import requests
 from bs4 import BeautifulSoup
 from ..Item_class import item_info
 from collections import deque
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import asyncio
-import aiohttp
 
 
-HEAD = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/138.0.7204.169 Safari/537.36"
-}
+"""
 
+    올포영
 
-async def scrap_allfor() -> list[item_info]:
+"""
+async def scrap_allfor(session) -> list[item_info]:
     URL = "https://www.allforyoung.com/posts/contest?tags=20"
     LINK_FRONT = "https://www.allforyoung.com"
     items = []
@@ -28,11 +22,12 @@ async def scrap_allfor() -> list[item_info]:
     page_cnt = 0
     while True:
         page_cnt += 1
-        res = requests.get(URL+f"&page={page_cnt}", headers=HEAD)
-        if res.status_code != 200:
+
+        list_content, _ = await fetch_page(session, URL+f"&page={page_cnt}")
+        if not list_content:
             break
 
-        soup = BeautifulSoup(res.content, 'html.parser')
+        soup = BeautifulSoup(list_content, 'html.parser')
 
         #   상세 페이지 링크
         links_selet = soup.select("body > div > div:nth-child(2) > main > section > div.main-responsive > div > div.space-y-20 > ul > a")
@@ -75,80 +70,11 @@ async def scrap_allfor() -> list[item_info]:
     return list(items)
 
 
+"""
 
+    위비티
 
-async def scrap_linkar() -> list[item_info]:
-    options = Options()
-    options.add_argument("--disable-notifications")
-    URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
-    driver = webdriver.Chrome(options=options)
-    items = []
-
-    for p in range(1, 3):
-        res = requests.get(URL + f"&page={p}", headers=HEAD)
-        if res.status_code != 200:
-            return None
-        driver.get(URL + f"&page={p}")
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "activity-image")))
-
-        titles = driver.find_elements(By.CLASS_NAME, "activity-title")
-        orgs = driver.find_elements(By.CLASS_NAME, "organization-name")
-        dates = driver.find_elements(By.CLASS_NAME, "card-content")
-        links = driver.find_elements(By.CLASS_NAME, "image-link")
-        images = driver.find_elements(By.CLASS_NAME, "activity-image")
-        
-
-        #   이미지, 공모전 이름, 주관사, 마감일
-        for date, title, org, link, image in zip(dates, titles, orgs, links, images):
-            item = [False, False, False, False, False]
-            
-            try:
-                WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
-            except:
-                continue
-            item[0] = image.get_attribute("src") if "data" not in image.get_attribute("src").split(":") else image.get_attribute("srcset")
-            
-
-            item[1] = title.text
-            item[2] = org.text
-
-            card_content = date.get_property("textContent")
-            date_result = search(
-                r'D-\d{2,3}',card_content.replace(title.text, "").replace(org.text, "")
-                )
-            item[3] = date_result.group() if date_result else False
-
-            item[4] = link.get_attribute("href")
-
-
-            if all(item):
-                new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-                items.append(new)
-        # driver.close()
-
-    return list(items)
-
-
-async def fetch_page(session, url):
-    try:
-        async with session.get(url, timeout=10) as response:
-            if response.status == 200:
-                content = await response.text()
-                return content, url
-            else:
-                print(f"HTTP {response.status} for {url}")
-                return None, url
-            
-    except asyncio.TimeoutError:
-        print(f"Timeout for {url}")
-        return None, url
-    
-    except Exception as e:
-        print(f"Error fetching {url}: {e}")
-        return None, url
-
+"""
 async def scrap_wivity(content, url):
     try:
         soup = BeautifulSoup(content, 'html.parser')
@@ -208,8 +134,7 @@ async def scrap_wivity(content, url):
         print(f"Error parsing {url}: {e}")
         return None
 
-async def process_page_batch(session, page, semaphore):
-    """한 페이지의 모든 상세 페이지들을 비동기로 처리"""
+async def process_wivity_batch(session, page, semaphore):
     FRONT_URL = "https://www.wevity.com/index.php"
     
     async with semaphore:  # 동시 요청 수 제한
@@ -238,7 +163,7 @@ async def process_page_batch(session, page, semaphore):
             # 모든 파싱 작업 완료 대기
             parsed_items = await asyncio.gather(*parse_tasks, return_exceptions=True)
             
-            # 유효한 아이템들만 필터링
+            # 유효한 아이템 필터링
             valid_items = [
                 item for item in parsed_items 
                 if item and not isinstance(item, Exception)
@@ -250,43 +175,118 @@ async def process_page_batch(session, page, semaphore):
         except Exception as e:
             print(f"Error processing page: {e}")
             return []
+        
 
-async def scrap() -> bool | list[item_info]:
-    URL1 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
-    URL2 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=20"
-    URL3 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=22"
-    url_list = []
-    for i in range(1, 3):
-        for j in [URL1, URL2, URL3]:
-            url_list.append(j + f"&gp={i}")
 
-    
-    # 동시 연결 수 제한 (서버 부하 방지)
-    connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
-    timeout = aiohttp.ClientTimeout(total=30)
-    semaphore = asyncio.Semaphore(3)  # 동시 페이지 처리 수 제한
-    
-    async with aiohttp.ClientSession(
-        headers=HEAD, 
-        connector=connector, 
-        timeout=timeout
-    ) as session:
+"""
+
+    링커리어
+    selenium
+
+"""
+async def scrap_linkar(session, driver) -> list[item_info]:
+    URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
+    items = []
+
+    for p in range(1, 3):
+
+        list_content, _ = await fetch_page(session, URL+f"&page={p}")
+        if not list_content:
+            return items
+
+        driver.get(URL + f"&page={p}")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(3)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "activity-image")))
+
+        titles = driver.find_elements(By.CLASS_NAME, "activity-title")
+        orgs = driver.find_elements(By.CLASS_NAME, "organization-name")
+        dates = driver.find_elements(By.CLASS_NAME, "card-content")
+        links = driver.find_elements(By.CLASS_NAME, "image-link")
+        images = driver.find_elements(By.CLASS_NAME, "activity-image")
         
-        # 모든 페이지를 동시에 처리
-        page_tasks = [
-            process_page_batch(session, url, semaphore) for url in url_list
-        ]
-        page_tasks.append(scrap_allfor())
-        page_tasks.append(scrap_linkar())
-        
-        # 모든 페이지 처리 완료 대기
-        page_results = await asyncio.gather(*page_tasks, return_exceptions=True)
-        
-        # 결과 통합
-        all_items = []
-        for result in page_results:
-            if result and not isinstance(result, Exception):
-                all_items.extend(result)
+
+        #   이미지, 공모전 이름, 주관사, 마감일
+        for date, title, org, link, image in zip(dates, titles, orgs, links, images):
+            item = [False, False, False, False, False]
+            
+            try:
+                WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
+            except:
+                continue
+            item[0] = image.get_attribute("src") if "data" not in image.get_attribute("src").split(":") else image.get_attribute("srcset")
+            
+
+            item[1] = title.text
+            item[2] = org.text
+
+            card_content = date.get_property("textContent")
+            date_result = search(
+                r'D-\d{2,3}',card_content.replace(title.text, "").replace(org.text, "")
+                )
+            item[3] = date_result.group() if date_result else False
+
+            item[4] = link.get_attribute("href")
+
+
+            if all(item):
+                new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                items.append(new)
+    driver.close()
+
+    return list(items)
+
+
+async def scrap_thinkGood(session):
+    # todo: 싱크굳 이거 해야함
+    items = []
+    list_content, _ = await fetch_page(session, URL)
+    if not list_content:
+        return items
+
+
+async def scrap_allCon(session):
+    URL_FRONT = "https://www.all-con.co.kr/list/contest/1/1"
+    URL_OPTION = "?sortname=cl_order&sortorder=asc&stx=&sfl=&t=1&ct=4&sc=23&tg=2"
+    items = []
+    list_content, _ = await fetch_page(session, URL)
+    if not list_content:
+        return items
+
+
+async def scrap_thinkYou(session):
+    pass
+
+
+async def scrap_detizen(session):
+    pass
+
+
+
+"""
+
+    Utils
+
+"""
+async def fetch_page(session, url):
+    """
     
-    print(f"Total items scraped: {len(all_items)}")
-    return all_items if all_items else []
+        세션 만들어서 링크 유효성 검증, util 로 뺄 가능성 있음
+    
+    """
+    try:
+        async with session.get(url, timeout=10) as response:
+            if response.status == 200:
+                content = await response.text()
+                return content, url
+            else:
+                print(f"HTTP {response.status} for {url}")
+                return None, url
+            
+    except asyncio.TimeoutError:
+        print(f"Timeout for {url}")
+        return None, url
+    
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return None, url
