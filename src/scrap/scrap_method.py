@@ -20,7 +20,7 @@ HEAD = {
 }
 
 
-def scrap_allfor() -> bool | list[item_info]:
+async def scrap_allfor() -> list[item_info]:
     URL = "https://www.allforyoung.com/posts/contest?tags=20"
     LINK_FRONT = "https://www.allforyoung.com"
     items = []
@@ -77,7 +77,7 @@ def scrap_allfor() -> bool | list[item_info]:
 
 
 
-async def scrap_linkar() -> bool | list[item_info]:
+async def scrap_linkar() -> list[item_info]:
     options = Options()
     options.add_argument("--disable-notifications")
     URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
@@ -126,7 +126,7 @@ async def scrap_linkar() -> bool | list[item_info]:
             if all(item):
                 new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                 items.append(new)
-        driver.close()
+        # driver.close()
 
     return list(items)
 
@@ -149,8 +149,7 @@ async def fetch_page(session, url):
         print(f"Error fetching {url}: {e}")
         return None, url
 
-async def parse_detail_page(content, url):
-    """상세 페이지를 파싱하는 비동기 함수"""
+async def scrap_wivity(content, url):
     try:
         soup = BeautifulSoup(content, 'html.parser')
         
@@ -170,8 +169,13 @@ async def parse_detail_page(content, url):
         # 카드 정보들
         cards = soup.select("ul.cd-info-list > li")
         if len(cards) >= 8:
+            field = cards[0].text.replace(",", "").split()
+            if len(set(["영상/UCC/사진", "예체능/미술/음악"]) & set(field)) > 0:
+                return None
+
             # 참가자격 확인 (일반인 포함 여부)
-            if "일반인" not in cards[1].text.replace(",", "").split():
+            ap = cards[1].text.replace(",", "").split()
+            if ("일반인" not in ap) and ("제한없음" not in ap):
                 return None
             
             # 주관사
@@ -204,15 +208,14 @@ async def parse_detail_page(content, url):
         print(f"Error parsing {url}: {e}")
         return None
 
-async def process_page_batch(session, page_cnt, semaphore):
+async def process_page_batch(session, page, semaphore):
     """한 페이지의 모든 상세 페이지들을 비동기로 처리"""
-    URL = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
     FRONT_URL = "https://www.wevity.com/index.php"
     
     async with semaphore:  # 동시 요청 수 제한
         try:
             # 목록 페이지 가져오기
-            list_content, _ = await fetch_page(session, URL + f"&gp={page_cnt}")
+            list_content, _ = await fetch_page(session, page)
             if not list_content:
                 return []
             
@@ -222,8 +225,6 @@ async def process_page_batch(session, page_cnt, semaphore):
             details = soup.select("ul.list > li > div.tit > a")
             detail_urls = [FRONT_URL + detail.get("href") for detail in details]
             
-            print(f"Page {page_cnt}: Found {len(detail_urls)} items")
-            
             # 모든 상세 페이지들을 동시에 요청
             tasks = [fetch_page(session, url) for url in detail_urls]
             detail_responses = await asyncio.gather(*tasks, return_exceptions=True)
@@ -232,7 +233,7 @@ async def process_page_batch(session, page_cnt, semaphore):
             parse_tasks = []
             for content, url in detail_responses:
                 if content and not isinstance(content, Exception):
-                    parse_tasks.append(parse_detail_page(content, url))
+                    parse_tasks.append(scrap_wivity(content, url))
             
             # 모든 파싱 작업 완료 대기
             parsed_items = await asyncio.gather(*parse_tasks, return_exceptions=True)
@@ -243,14 +244,22 @@ async def process_page_batch(session, page_cnt, semaphore):
                 if item and not isinstance(item, Exception)
             ]
             
-            print(f"Page {page_cnt}: Successfully parsed {len(valid_items)} items")
+            print(f"Successfully parsed {len(valid_items)} items")
             return valid_items
             
         except Exception as e:
-            print(f"Error processing page {page_cnt}: {e}")
+            print(f"Error processing page: {e}")
             return []
 
-async def scrap_wivity() -> bool | list[item_info]:
+async def scrap() -> bool | list[item_info]:
+    URL1 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
+    URL2 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=20"
+    URL3 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=22"
+    url_list = []
+    for i in range(1, 3):
+        for j in [URL1, URL2, URL3]:
+            url_list.append(j + f"&gp={i}")
+
     
     # 동시 연결 수 제한 (서버 부하 방지)
     connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
@@ -265,9 +274,10 @@ async def scrap_wivity() -> bool | list[item_info]:
         
         # 모든 페이지를 동시에 처리
         page_tasks = [
-            process_page_batch(session, page_cnt, semaphore) 
-            for page_cnt in range(1, 3)
+            process_page_batch(session, url, semaphore) for url in url_list
         ]
+        page_tasks.append(scrap_allfor())
+        page_tasks.append(scrap_linkar())
         
         # 모든 페이지 처리 완료 대기
         page_results = await asyncio.gather(*page_tasks, return_exceptions=True)
@@ -279,61 +289,4 @@ async def scrap_wivity() -> bool | list[item_info]:
                 all_items.extend(result)
     
     print(f"Total items scraped: {len(all_items)}")
-    return all_items if all_items else False
-
-
-
-# def scrap_wivity() -> bool | list[item_info]:
-#     URL = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
-#     FRONT_URL = "https://www.wevity.com/index.php"
-
-#     items = []
-
-#     for page_cnt in range(1, 3):
-
-#         res = requests.get(URL+f"&gp={page_cnt}", headers=HEAD)
-#         if res.status_code != 200:
-#             break
-
-#         soup = BeautifulSoup(res.content, 'html.parser')
-
-#         #   각 공모전별 상세 페이지 링크
-#         details = soup.select("ul.list > li > div.tit > a ")
-
-#         for detail in details:
-#             detail_res = requests.get(FRONT_URL+detail.get("href"))
-#             if detail_res.status_code != 200:
-#                 continue
-
-#             detail_soup = BeautifulSoup(detail_res.content, 'html.parser')
-
-#             #   이미지, 공모전 이름, 주관사, 마감일, 상세 링크
-#             item = [False, False, False, False, False]
-
-#             #   img
-#             item[0] = "https://www.wevity.com" + detail_soup.select_one("div.thumb > img").get("src")
-
-#             #   title
-#             item[1] = detail_soup.select_one("div.tit-area > h6.tit").text
-
-
-#             #   주관사, 마감일, 상세링크 모음
-#             cards = detail_soup.select("ul.cd-info-list > li")
-#             if "일반인" not in cards[1].text.replace(",", "").split():
-#                 continue
-
-
-#             #   주관사
-#             item[2] = cards[2].text.strip().split("\n")[1].replace("\t\t\t\t\t", "")
-
-#             #   마감일
-#             item[3] = cards[4].text.strip().split()[-1]
-
-#             #   홈페이지
-#             item[4] = cards[7].text.strip().split()[-1]
-
-#             if all(item):
-#                 new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-#                 items.append(new)
-
-#     return list(items)
+    return all_items if all_items else []

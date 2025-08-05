@@ -1,1 +1,1 @@
-from .scrap_method import scrap_linkar, scrap_allfor, scrap_wivity
+from .scrap_method import scrap, scrap_linkar

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from src.scrap import scrap_linkar, scrap_allfor, scrap_wivity
+from src.scrap import scrap, scrap_linkar
 import uvicorn
 templates = Jinja2Templates(directory="src/resourse/pages")
 app = FastAPI()
@@ -12,9 +12,10 @@ async def root(request: Request):
 
     
     # items = scrap_allfor()
-    # items.extend(await scrap_linkar())
+    # items = await scrap_linkar()
+    items = await scrap()
+    items = sorted(items, key= lambda x: x.date)
     
-    items = await scrap_wivity()
 
     if not items:
         return RedirectResponse(url="/false")
