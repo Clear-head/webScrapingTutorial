@@ -20,13 +20,11 @@ async def scrap_allfor(session) -> list[item_info]:
     LINK_FRONT = "https://www.allforyoung.com"
     items = []
 
-    page_cnt = 0
-    while True:
-        page_cnt += 1
+    for page_cnt in range(1, 4):
 
         list_content, _ = await fetch_page(session, URL+f"&page={page_cnt}")
         if not list_content:
-            break
+            continue
 
         soup = BeautifulSoup(list_content, 'html.parser')
 
@@ -67,7 +65,7 @@ async def scrap_allfor(session) -> list[item_info]:
                     
                     items.append(new)
                 item = [None, None, None, None]
-
+    print(f"Successfully allforyoung parsed {len(items)} items")
     return list(items)
 
 
@@ -170,7 +168,7 @@ async def process_wivity_batch(session, page, semaphore):
                 if item and not isinstance(item, Exception)
             ]
             
-            print(f"Successfully parsed {len(valid_items)} items")
+            print(f"Successfully wivity parsed {len(valid_items)} items")
             return valid_items
             
         except Exception as e:
@@ -189,52 +187,56 @@ async def scrap_linkar(session, driver) -> list[item_info]:
     URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
     items = []
 
-    for p in range(1, 3):
+    for p in [URL+"&page=1", URL+"&page=2"]:
 
-        list_content, _ = await fetch_page(session, URL+f"&page={p}")
+        list_content, _ = await fetch_page(session, p)
+
         if not list_content:
-            return items
+            continue
+        try:
+            driver.get(p)
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(3)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "activity-image")))
 
-        driver.get(URL + f"&page={p}")
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "activity-image")))
+            titles = driver.find_elements(By.CLASS_NAME, "activity-title")
+            orgs = driver.find_elements(By.CLASS_NAME, "organization-name")
+            dates = driver.find_elements(By.CLASS_NAME, "card-content")
+            links = driver.find_elements(By.CLASS_NAME, "image-link")
+            images = driver.find_elements(By.CLASS_NAME, "activity-image")
+            
 
-        titles = driver.find_elements(By.CLASS_NAME, "activity-title")
-        orgs = driver.find_elements(By.CLASS_NAME, "organization-name")
-        dates = driver.find_elements(By.CLASS_NAME, "card-content")
-        links = driver.find_elements(By.CLASS_NAME, "image-link")
-        images = driver.find_elements(By.CLASS_NAME, "activity-image")
+            #   이미지, 공모전 이름, 주관사, 마감일
+            for date, title, org, link, image in zip(dates, titles, orgs, links, images):
+                item = [False, False, False, False, False]
+                
+                try:
+                    WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
+                except:
+                    continue
+
+                item[0] = image.get_attribute("src") if "data" not in image.get_attribute("src").split(":") else image.get_attribute("srcset")
+                item[1] = title.text
+                item[2] = org.text
+
+                card_content = date.get_property("textContent")
+                date_result = search(
+                    r'D-\d{2,3}',card_content.replace(title.text, "").replace(org.text, "")
+                    )
+                
+                item[3] = date_result.group() if date_result else False
+                item[4] = link.get_attribute("href")
+
+                if all(item):
+                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    items.append(new)
+
+        except Exception as e:
+            print(f"error linkareer : {e}")
+            continue
         
-
-        #   이미지, 공모전 이름, 주관사, 마감일
-        for date, title, org, link, image in zip(dates, titles, orgs, links, images):
-            item = [False, False, False, False, False]
-            
-            try:
-                WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
-            except:
-                continue
-            item[0] = image.get_attribute("src") if "data" not in image.get_attribute("src").split(":") else image.get_attribute("srcset")
-            
-
-            item[1] = title.text
-            item[2] = org.text
-
-            card_content = date.get_property("textContent")
-            date_result = search(
-                r'D-\d{2,3}',card_content.replace(title.text, "").replace(org.text, "")
-                )
-            item[3] = date_result.group() if date_result else False
-
-            item[4] = link.get_attribute("href")
-
-
-            if all(item):
-                new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-                items.append(new)
     driver.quit()
-
+    print(f"Successfully Linkerear parsed {len(items)} items")
     return list(items)
 
 
@@ -281,7 +283,7 @@ async def scrap_thinkGood(session, driver):
         item = [False, False, False, False, False]
 
         #   d-day and click
-        date = click_safely(i, driver)
+        date = click_safely(i, driver, wait)
         if not date:
             continue
         else:
@@ -305,8 +307,8 @@ async def scrap_thinkGood(session, driver):
             for tit, txt in zip(tits, txts):
                 if tit.text == "주최":
                     item[2] = txt.text
-                elif tit.text == "주관":
-                    item[2] += txt.text
+                elif tit.text == "주관" and tit.text != txt.text:
+                    item[2] += " / " + txt.text
                 elif tit.text == "홈페이지":
                     item[4] = txt.find_element(By.TAG_NAME, "a").get_attribute("href")
 
@@ -341,6 +343,8 @@ async def scrap_thinkGood(session, driver):
                 pass
 
     driver.quit()
+
+    print(f"Successfully thinkGood parsed {len(items)} items")
     return list(items)
 
 
@@ -348,11 +352,11 @@ def get_tk_details(wait, driver):
     wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#dataList > tr")))
     return driver.find_elements(By.CSS_SELECTOR, "#dataList > tr")
 
-def click_safely(index, driver):     #   D-day 가져오고 클릭해서 상세페이지 들감
+def click_safely(index, driver, wait):     #   D-day 가져오고 클릭해서 상세페이지 들감
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            details = get_tk_details()
+            details = get_tk_details(wait, driver)
             
             if index < len(details):
                 detail = details[index]
@@ -386,13 +390,13 @@ async def fetch_page(session, url):
     
     """
     try:
-        async with session.get(url, timeout=10) as response:
+        async with session.get(url, timeout=30) as response:
             if response.status == 200:
                 content = await response.text()
                 return content, url
             else:
                 print(f"HTTP {response.status} for {url}")
-                return None, url
+                return False, url
             
     except asyncio.TimeoutError:
         print(f"Timeout for {url}")

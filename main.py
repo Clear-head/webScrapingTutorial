@@ -10,19 +10,15 @@ app = FastAPI()
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
 
-    
-    # items = scrap_allfor()
-    # items = await scrap_linkar()
     items = await scrap_batch()
     items = sorted(items, key= lambda x: (x.date, x.title))
-    
 
     if not items:
         return RedirectResponse(url="/false")
     
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "items": items  # deque → list 로 변환하여 전달
+        "items": items
     })
 
 @app.get("/false")
