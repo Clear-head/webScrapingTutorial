@@ -6,6 +6,7 @@ from collections import deque
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 import asyncio
 
 
@@ -232,36 +233,146 @@ async def scrap_linkar(session, driver) -> list[item_info]:
             if all(item):
                 new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                 items.append(new)
-    driver.close()
+    driver.quit()
 
     return list(items)
 
 
-async def scrap_thinkGood(session):
-    # todo: 싱크굳 이거 해야함
+"""
+
+    씽굿
+
+"""
+
+
+async def scrap_thinkGood(session, driver):
+    possible_selectors = [
+        ".button-list",
+        "button[onclick*='back']",
+        "button[onclick*='close']",
+        ".btn-back",
+        ".btn-close",
+        "a[href*='back']"
+    ]
+    URL = "https://www.thinkcontest.com/thinkgood/user/contest/index.do#PxyyoRLHIcgvNg6HiHNz_mp_cuclMrohRDGEjn6hvDsggetrTQxNWBBQR1mPnaRxjI93xVlR_kFjCl9g5hFBO1N6UGMkDhLA2ecFAf6UhFU"
     items = []
     list_content, _ = await fetch_page(session, URL)
     if not list_content:
         return items
+    
+    driver.get(URL)
+    time.sleep(1.5)
+    wait = WebDriverWait(driver, 10)
 
-
-async def scrap_allCon(session):
-    URL_FRONT = "https://www.all-con.co.kr/list/contest/1/1"
-    URL_OPTION = "?sortname=cl_order&sortorder=asc&stx=&sfl=&t=1&ct=4&sc=23&tg=2"
     items = []
-    list_content, _ = await fetch_page(session, URL)
-    if not list_content:
-        return items
+
+    a = driver.find_elements(By.CLASS_NAME, "gotoLeftLink")     # ㄹㅇ a 태그임 ㅋㅋ
+    for i in a:
+        if i.get_attribute("data-search_type") == "contest_field" and i.get_attribute("data-value") in ["CCFD002", "CCFD017", "CCFD003"]:
+            i.click()
+        elif i.get_attribute("data-search_type") == "enter_qualified" and i.get_attribute("data-value") in ["PCQF008", "PCQF010"]:
+            i.click()
+
+    initial_details = get_tk_details(wait, driver)
+    total_details = len(initial_details)
+
+    for i in range(total_details):
+        #   이미지, 공모전 이름, 주관사, 마감일
+        item = [False, False, False, False, False]
+
+        #   d-day and click
+        date = click_safely(i, driver)
+        if not date:
+            continue
+        else:
+            item[3] = date
+
+        try:
+
+            #   제목
+            title = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "contest-view__title"))).text
+            item[1] = title
+
+            #   이미지
+            img = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "contestimg"))).get_attribute("src")
+            item[0] = img
+
+            #   주최, 링크
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.txt")))
+            tits = driver.find_elements(By.CSS_SELECTOR, "div.tit")
+            txts = driver.find_elements(By.CSS_SELECTOR, "div.txt")
+
+            for tit, txt in zip(tits, txts):
+                if tit.text == "주최":
+                    item[2] = txt.text
+                elif tit.text == "주관":
+                    item[2] += txt.text
+                elif tit.text == "홈페이지":
+                    item[4] = txt.find_element(By.TAG_NAME, "a").get_attribute("href")
+
+            try:
+                button_clicked = False
+                for selector in possible_selectors:
+                    try:
+                        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+                        next_btn = driver.find_element(By.CSS_SELECTOR, selector)
+                        driver.execute_script("arguments[0].scrollIntoView(true);", next_btn)
+                        driver.execute_script("arguments[0].click();", next_btn)
+                        button_clicked = True
+                        break
+                    except:
+                        continue
+                
+                if not button_clicked:
+                    driver.back()
+
+            except Exception as e:
+                driver.back()
+            finally:
+                if all(item):
+                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    items.append(new)
+
+        except Exception as e:
+            try:
+                driver.back()
+                time.sleep(1)
+            except:
+                pass
+
+    driver.quit()
+    return list(items)
 
 
-async def scrap_thinkYou(session):
-    pass
+def get_tk_details(wait, driver):
+    wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#dataList > tr")))
+    return driver.find_elements(By.CSS_SELECTOR, "#dataList > tr")
 
-
-async def scrap_detizen(session):
-    pass
-
-
+def click_safely(index, driver):     #   D-day 가져오고 클릭해서 상세페이지 들감
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            details = get_tk_details()
+            
+            if index < len(details):
+                detail = details[index]
+                driver.execute_script("arguments[0].scrollIntoView(true);", detail)
+                time.sleep(1)
+                date = driver.find_element(By.CSS_SELECTOR, "#dataList > tr:nth-child(1) > td:nth-child(4)").text
+                driver.execute_script("arguments[0].click();", detail)
+                return date
+            else:
+                print(f"인덱스 {index}가 범위를 벗어났습니다.")
+                return False
+                
+        except StaleElementReferenceException:
+            print(f"StaleElement 오류 발생, 재시도 {attempt + 1}/{max_retries}")
+            time.sleep(1)
+        except Exception as e:
+            print(f"클릭 오류: {e}")
+            time.sleep(1)
+    
+    return False
 
 """
 
