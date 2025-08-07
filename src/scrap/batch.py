@@ -23,7 +23,10 @@ def get_driver():
 
     return driver
 
-async def scrap_batch() -> bool | list[item_info]:
+async def scrap_batch():
+
+    print("============= Scrap Start =============")
+
     URL1 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=21"
     URL2 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=20"
     URL3 = "https://www.wevity.com/index.php?c=find&s=1&gub=1&cidx=22"

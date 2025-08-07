@@ -15,7 +15,7 @@ import asyncio
     올포영
 
 """
-async def scrap_allfor(session) -> list[item_info]:
+async def scrap_allfor(session):
     URL = "https://www.allforyoung.com/posts/contest?tags=20"
     LINK_FRONT = "https://www.allforyoung.com"
     items = []
@@ -183,7 +183,7 @@ async def process_wivity_batch(session, page, semaphore):
     selenium
 
 """
-async def scrap_linkar(session, driver) -> list[item_info]:
+async def scrap_linkar(session, driver):
     URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
     items = []
 
