@@ -1,7 +1,8 @@
 import time
 from re import search
 from bs4 import BeautifulSoup
-from ..Item_class import item_info
+from ..classes.Item_class import item_info
+from ..classes.item_list_class import ItemList
 from collections import deque
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -18,7 +19,7 @@ import asyncio
 async def scrap_allfor(session):
     URL = "https://www.allforyoung.com/posts/contest?tags=20"
     LINK_FRONT = "https://www.allforyoung.com"
-    items = []
+    items = ItemList()
 
     for page_cnt in range(1, 4):
 
@@ -63,10 +64,10 @@ async def scrap_allfor(session):
                 if not item[3] == "D-day":
                     new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft())
                     
-                    items.append(new)
+                    items.add_item(new)
                 item = [None, None, None, None]
     print(f"Successfully allforyoung parsed {len(items)} items")
-    return list(items)
+    return items
 
 
 """
@@ -141,7 +142,7 @@ async def process_wivity_batch(session, page, semaphore):
             # 목록 페이지 가져오기
             list_content, _ = await fetch_page(session, page)
             if not list_content:
-                return []
+                return ItemList()
             
             soup = BeautifulSoup(list_content, 'html.parser')
             
@@ -163,10 +164,11 @@ async def process_wivity_batch(session, page, semaphore):
             parsed_items = await asyncio.gather(*parse_tasks, return_exceptions=True)
             
             # 유효한 아이템 필터링
-            valid_items = [
-                item for item in parsed_items 
-                if item and not isinstance(item, Exception)
-            ]
+
+            valid_items = ItemList()
+            for item in parsed_items:
+                if item and not isinstance(item, Exception):
+                    valid_items.add_item(item)
             
             print(f"Successfully wivity parsed {len(valid_items)} items")
             return valid_items
@@ -185,7 +187,7 @@ async def process_wivity_batch(session, page, semaphore):
 """
 async def scrap_linkar(session, driver):
     URL = "https://linkareer.com/list/contest?filterBy_categoryIDs=35&filterBy_targetIDs=3&filterBy_targetIDs=4&filterType=TARGET&orderBy_direction=DESC&orderBy_field=CREATED_AT"
-    items = []
+    items = ItemList()
 
     for p in [URL+"&page=1", URL+"&page=2"]:
 
@@ -229,7 +231,7 @@ async def scrap_linkar(session, driver):
 
                 if all(item):
                     new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-                    items.append(new)
+                    items.add_item(new)
 
         except Exception as e:
             print(f"error linkareer : {e}")
@@ -237,7 +239,7 @@ async def scrap_linkar(session, driver):
         
     driver.quit()
     print(f"Successfully Linkerear parsed {len(items)} items")
-    return list(items)
+    return items
 
 
 """
@@ -257,7 +259,7 @@ async def scrap_thinkGood(session, driver):
         "a[href*='back']"
     ]
     URL = "https://www.thinkcontest.com/thinkgood/user/contest/index.do#PxyyoRLHIcgvNg6HiHNz_mp_cuclMrohRDGEjn6hvDsggetrTQxNWBBQR1mPnaRxjI93xVlR_kFjCl9g5hFBO1N6UGMkDhLA2ecFAf6UhFU"
-    items = []
+    items = ItemList()
     list_content, _ = await fetch_page(session, URL)
     if not list_content:
         return items
@@ -265,8 +267,6 @@ async def scrap_thinkGood(session, driver):
     driver.get(URL)
     time.sleep(1.5)
     wait = WebDriverWait(driver, 10)
-
-    items = []
 
     a = driver.find_elements(By.CLASS_NAME, "gotoLeftLink")     # ㄹㅇ a 태그임 ㅋㅋ
     for i in a:
@@ -333,7 +333,7 @@ async def scrap_thinkGood(session, driver):
             finally:
                 if all(item):
                     new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
-                    items.append(new)
+                    items.add_item(new)
 
         except Exception as e:
             try:
@@ -345,7 +345,7 @@ async def scrap_thinkGood(session, driver):
     driver.quit()
 
     print(f"Successfully thinkGood parsed {len(items)} items")
-    return list(items)
+    return items
 
 
 def get_tk_details(wait, driver):

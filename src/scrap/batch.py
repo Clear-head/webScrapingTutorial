@@ -1,8 +1,9 @@
-from ..Item_class import item_info
+
 import asyncio
 import aiohttp
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from ..classes.item_list_class import ItemList
 
 from src.scrap.scrap_method import scrap_allfor, scrap_linkar, process_wivity_batch, scrap_thinkGood
 
@@ -66,10 +67,11 @@ async def scrap_batch():
         page_results.extend(await asyncio.gather(*page_task3, return_exceptions=True))
         
         # 결과 통합
-        all_items = []
+        all_items = ItemList()
         for result in page_results:
             if result and not isinstance(result, Exception):
-                all_items.extend(result)
+                all_items.extends(result)
+
     
     print(f"Total items scraped: {len(all_items)}")
     return all_items if all_items else []
