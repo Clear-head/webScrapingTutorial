@@ -11,6 +11,7 @@ class ItemList:
     def add_item(self, item: item_info):
 
         title_key = re.sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', ' ', item.title)
+        item.key = title_key
 
         if title_key not in self._unique_keys:
             self._items.append(item)

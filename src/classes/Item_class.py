@@ -7,13 +7,15 @@ class item_info(BaseModel):
     organize: str
     date: str
     link: str
+    key: str
+    site: str
 
     @field_validator('date', mode='before')
     @classmethod
     def convert_date(cls, value):
         if value.startswith("D-"):
             try:
-                days = int(value[2:])
+                days = int(value[2:]) if cls.site != "위비티" else int(value[2:])-1
                 date_obj = datetime.now() + timedelta(days=days)
                 return date_obj.strftime("%Y-%m-%d") + " 까지"
             except ValueError:
