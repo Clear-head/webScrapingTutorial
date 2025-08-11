@@ -12,10 +12,9 @@ class ItemList:
 
         title_key = re.sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', ' ', item.title)
 
-        unique_key = (title_key, item.date)
-        if unique_key not in self._unique_keys:
+        if title_key not in self._unique_keys:
             self._items.append(item)
-            self._unique_keys.add(unique_key)
+            self._unique_keys.add(title_key)
             return True
         return False
     
@@ -30,4 +29,4 @@ class ItemList:
         return len(self._items)
     
     def __iter__(self):
-        return self._items
+        return iter(self._items)

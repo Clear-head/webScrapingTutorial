@@ -1,4 +1,3 @@
-
 import asyncio
 import aiohttp
 from selenium import webdriver
@@ -56,7 +55,6 @@ async def scrap_batch():
 
         page_task3 = [scrap_thinkGood(session, get_driver())]
         
-        # 모든 페이지 처리 완료 대기
         print("========= task 1 start =========")
         page_results = await asyncio.gather(*page_task1, return_exceptions=True)
 
