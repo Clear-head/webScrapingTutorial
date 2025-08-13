@@ -21,3 +21,6 @@ class item_info(BaseModel):
             except ValueError:
                 return "마감"
         return "마감"
+    
+    def to_dict(cls):
+        return {"img": cls.img, "title": cls.title, "org": cls.organize, "date": cls.date, "link": cls.link, "key": cls.key, "site": cls.site}
