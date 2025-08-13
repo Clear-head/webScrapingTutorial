@@ -62,7 +62,7 @@ async def scrap_allfor(session):
 
             if None not in item:
                 if not item[3] == "D-day":
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft(), site="올포영")
+                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft(), key="")
                     
                     items.add_item(new)
                 item = [None, None, None, None]
@@ -113,6 +113,7 @@ async def scrap_wivity(content, url):
             date_parts = cards[4].text.strip().split()
             if date_parts:
                 item[3] = date_parts[-1]
+                item[3] = item[3][:2] + str(int(item[3][2:]) - 1)
             
             # 홈페이지
             link_parts = cards[7].text.strip().split()
@@ -127,7 +128,7 @@ async def scrap_wivity(content, url):
                 organize=item[2], 
                 date=item[3], 
                 link=item[4],
-                site="위비티"
+                key=""
             )
         return None
         
@@ -231,7 +232,7 @@ async def scrap_linkar(session, driver):
                 item[4] = link.get_attribute("href")
 
                 if all(item):
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4], site="링커리어")
+                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4], key="")
                     items.add_item(new)
 
         except Exception as e:
@@ -333,7 +334,7 @@ async def scrap_thinkGood(session, driver):
                 driver.back()
             finally:
                 if all(item):
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4], site="씽굿")
+                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4], key="")
                     items.add_item(new)
 
         except Exception as e:
