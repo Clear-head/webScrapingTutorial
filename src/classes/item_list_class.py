@@ -1,5 +1,4 @@
-from .Item_class import item_info
-import re
+from .Item_class import Item_info
 from typing import List
 
 class ItemList:
@@ -8,9 +7,7 @@ class ItemList:
         # 중복 확인을 위한 고유 식별자 집합
         self._unique_keys = set()
 
-    def add_item(self, item: item_info):
-        # title_key = re.sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', ' ', item.title)
-        # item.key = title_key
+    def add_item(self, item: Item_info):
 
         if item.key not in self._unique_keys:
             self._items.append(item)
@@ -21,7 +18,7 @@ class ItemList:
     def get_items(self):
         return self._items
     
-    def extends(self, items: List[item_info]):
+    def extends(self, items: List[Item_info]):
         for item in items:
             self.add_item(item)
     

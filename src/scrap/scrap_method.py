@@ -1,7 +1,7 @@
 import time
 from re import search
 from bs4 import BeautifulSoup
-from ..classes.Item_class import item_info
+from ..classes.Item_class import Item_info
 from ..classes.item_list_class import ItemList
 from collections import deque
 from selenium.webdriver.common.by import By
@@ -25,14 +25,17 @@ async def scrap_allfor(session):
 
         list_content, _ = await fetch_page(session, URL+f"&page={page_cnt}")
         if not list_content:
+            print(f"[debug] all for young page {page_cnt} is None")
             continue
+
+        print(f"[debug] all for young page {page_cnt} scrap started.")
 
         soup = BeautifulSoup(list_content, 'html.parser')
 
         #   상세 페이지 링크
-        links_selet = soup.select("body > div > div:nth-child(2) > main > section > div.main-responsive > div > div.space-y-20 > ul > a")
+        links_select = soup.select("body > div > div:nth-child(2) > main > section > div.main-responsive > div > div.space-y-20 > ul > a")
         links = deque()
-        for i in links_selet:
+        for i in links_select:
             links.append(LINK_FRONT + i.get("href"))
 
         item = [None, None, None, None]       # img, title, ori, date, link
@@ -46,27 +49,27 @@ async def scrap_allfor(session):
             txt = obj.select("div:nth-child(2) > p")
             dt = obj.select_one("div")
 
-            if img != None:
+            if img is not None:
                 item[0] = img.get("src")
 
-            if txt != None:
+            if txt is not None:
                 for t in txt:
-                    if item[1] == None:
+                    if item[1] is None:
                         item[1] = t.text
 
                     else:
                         item[2] = t.text
 
-            if dt != None:
+            if dt is not None:
                 item[3] = dt.text
 
             if None not in item:
                 if not item[3] == "D-day":
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft())
+                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft())
                     
                     items.add_item(new)
                 item = [None, None, None, None]
-    print(f"Successfully allforyoung parsed {len(items)} items")
+    print(f"[debug] Successfully allforyoung parsed {len(items)} items")
     return items
 
 
@@ -122,7 +125,7 @@ async def scrap_wivity(content, url):
         
         # 모든 정보가 있는지 확인
         if all(item):
-            return item_info(
+            return Item_info(
                 img=item[0], 
                 title=item[1], 
                 organize=item[2], 
@@ -132,7 +135,7 @@ async def scrap_wivity(content, url):
         return None
         
     except Exception as e:
-        print(f"Error parsing {url}: {e}")
+        print(f"[debug] Error parsing {url}: {e}")
         return None
 
 async def process_wivity_batch(session, page, semaphore):
@@ -143,6 +146,7 @@ async def process_wivity_batch(session, page, semaphore):
             # 목록 페이지 가져오기
             list_content, _ = await fetch_page(session, page)
             if not list_content:
+                print(f"[debug] wivity page {page} is None")
                 return ItemList()
             
             soup = BeautifulSoup(list_content, 'html.parser')
@@ -171,11 +175,11 @@ async def process_wivity_batch(session, page, semaphore):
                 if item and not isinstance(item, Exception):
                     valid_items.add_item(item)
             
-            print(f"Successfully wivity parsed {len(valid_items)} items")
+            print(f"[debug] Successfully wivity parsed {len(valid_items)} items")
             return valid_items
             
         except Exception as e:
-            print(f"Error processing page: {e}")
+            print(f"[debug] Error processing page: {e}")
             return []
         
 
@@ -195,6 +199,7 @@ async def scrap_linkar(session, driver):
         list_content, _ = await fetch_page(session, p)
 
         if not list_content:
+            print(f"[debug] linkereer page {page_cnt} is None")
             continue
         try:
             driver.get(p)
@@ -231,15 +236,15 @@ async def scrap_linkar(session, driver):
                 item[4] = link.get_attribute("href")
 
                 if all(item):
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                     items.add_item(new)
 
         except Exception as e:
-            print(f"error linkareer : {e}")
+            print(f"[debug] error linkareer : {e}")
             continue
         
     driver.quit()
-    print(f"Successfully Linkerear parsed {len(items)} items")
+    print(f"[debug] Successfully Linkerear parsed {len(items)} items")
     return items
 
 
@@ -248,8 +253,6 @@ async def scrap_linkar(session, driver):
     씽굿
 
 """
-
-
 async def scrap_thinkGood(session, driver):
     possible_selectors = [
         ".button-list",
@@ -333,7 +336,7 @@ async def scrap_thinkGood(session, driver):
                 driver.back()
             finally:
                 if all(item):
-                    new = item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                     items.add_item(new)
 
         except Exception as e:
@@ -345,7 +348,7 @@ async def scrap_thinkGood(session, driver):
 
     driver.quit()
 
-    print(f"Successfully thinkGood parsed {len(items)} items")
+    print(f"[debug] Successfully thinkGood parsed {len(items)} items")
     return items
 
 
@@ -367,14 +370,14 @@ def click_safely(index, driver, wait):     #   D-day 가져오고 클릭해서 �
                 driver.execute_script("arguments[0].click();", detail)
                 return date
             else:
-                print(f"인덱스 {index}가 범위를 벗어났습니다.")
+                print(f"[debug] 인덱스 {index}가 범위를 벗어났습니다.")
                 return False
                 
         except StaleElementReferenceException:
-            print(f"StaleElement 오류 발생, 재시도 {attempt + 1}/{max_retries}")
+            print(f"[debug] StaleElement 오류 발생, 재시도 {attempt + 1}/{max_retries}")
             time.sleep(1)
         except Exception as e:
-            print(f"클릭 오류: {e}")
+            print(f"[debug] 클릭 오류: {e}")
             time.sleep(1)
     
     return False
@@ -396,13 +399,13 @@ async def fetch_page(session, url):
                 content = await response.text()
                 return content, url
             else:
-                print(f"HTTP {response.status} for {url}")
+                print(f"[debug] HTTP {response.status} for {url}")
                 return False, url
             
     except asyncio.TimeoutError:
-        print(f"Timeout for {url}")
+        print(f"[debug] Timeout for {url}")
         return None, url
     
     except Exception as e:
-        print(f"Error fetching {url}: {e}")
+        print(f"[debug] Error fetching {url}: {e}")
         return None, url

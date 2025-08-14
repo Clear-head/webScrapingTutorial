@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 from pydantic import BaseModel, field_validator, model_validator
 from re import sub
-from typing import Dict
 
-class item_info(BaseModel):
+class Item_info(BaseModel):
     img: str
     title: str
     organize: str
@@ -22,12 +21,14 @@ class item_info(BaseModel):
                 return date_obj.strftime("%Y-%m-%d")
             except ValueError:
                 return "마감"
+        elif value.startswith("20"):
+            return value
         return "마감"
     
 
     @model_validator(mode="after")
     def set_key(self):
-        self.key = sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', '', self.title)
+        self.key = sub('^[A-Za-z0-9ㄱ-힣]', '', self.title.replace(" ", ""))
         return self
 
     

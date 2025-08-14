@@ -71,5 +71,5 @@ async def scrap_batch():
                 all_items.extends(result)
 
     
-    print(f"Total items scraped: {len(all_items)}")
+    print(f"[debug] Total items scraped: {len(all_items)}")
     return all_items if all_items else []
