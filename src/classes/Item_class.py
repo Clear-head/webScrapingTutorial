@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
+from re import sub
 
 class item_info(BaseModel):
     img: str
@@ -7,7 +8,8 @@ class item_info(BaseModel):
     organize: str
     date: str
     link: str
-    key: str
+    key: str = ""
+
 
     @field_validator('date', mode='before')
     @classmethod
@@ -16,10 +18,28 @@ class item_info(BaseModel):
             try:
                 days = int(value[2:])
                 date_obj = datetime.now() + timedelta(days=days)
-                return date_obj.strftime("%Y-%m-%d") + " 까지"
+                return date_obj.strftime("%Y-%m-%d")
             except ValueError:
                 return "마감"
         return "마감"
     
-    def to_dict(cls):
-        return {"img": cls.img, "title": cls.title, "org": cls.organize, "date": cls.date, "link": cls.link, "key": cls.key}
+
+    @model_validator(mode="after")
+    def set_key(self):
+        self.key = sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', '', self.title)
+        return self
+
+    
+    def to_dict(self):  # cls가 아니라 self를 사용
+        return {
+            "img": self.img, 
+            "title": self.title, 
+            "org": self.organize, 
+            "date": self.date, 
+            "link": self.link, 
+            "key": self.key
+        }
+    
+
+
+

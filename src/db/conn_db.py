@@ -82,3 +82,6 @@ class conn:
 
     def _check_duplicate_key(self, item_key):
         return self._cursor.sismember("keys", item_key)
+    
+    def close(self):
+        self._cursor.close()

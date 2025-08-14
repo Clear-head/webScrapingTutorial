@@ -9,13 +9,12 @@ class ItemList:
         self._unique_keys = set()
 
     def add_item(self, item: item_info):
+        # title_key = re.sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', ' ', item.title)
+        # item.key = title_key
 
-        title_key = re.sub('[-=+,#/\?:^.@*\"※~ㆍ!』‘|\(\)\[\]`\'…》\”\“\’·]', ' ', item.title)
-        item.key = title_key
-
-        if title_key not in self._unique_keys:
+        if item.key not in self._unique_keys:
             self._items.append(item)
-            self._unique_keys.add(title_key)
+            self._unique_keys.add(item.key)
             return True
         return False
     
