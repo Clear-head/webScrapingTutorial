@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from pydantic import BaseModel, field_validator, model_validator
 from re import sub
+from typing import Dict
 
 class item_info(BaseModel):
     img: str
@@ -31,7 +32,8 @@ class item_info(BaseModel):
 
     
     def to_dict(self):  # cls가 아니라 self를 사용
-        return {
+
+        d = {
             "img": self.img, 
             "title": self.title, 
             "org": self.organize, 
@@ -39,6 +41,10 @@ class item_info(BaseModel):
             "link": self.link, 
             "key": self.key
         }
+
+        print(f"[debug] item to ditionary {d}")
+
+        return d
     
 
 
