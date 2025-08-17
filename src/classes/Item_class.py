@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, field_validator, model_validator
 from re import sub
 
+
 class Item_info(BaseModel):
     img: str
     title: str
@@ -9,7 +10,6 @@ class Item_info(BaseModel):
     date: str
     link: str
     key: str = ""
-
 
     @field_validator('date', mode='before')
     @classmethod
@@ -24,29 +24,23 @@ class Item_info(BaseModel):
         elif value.startswith("20"):
             return value
         return "마감"
-    
 
     @model_validator(mode="after")
     def set_key(self):
         self.key = sub('^[A-Za-z0-9ㄱ-힣]', '', self.title.replace(" ", ""))
         return self
 
-    
     def to_dict(self):  # cls가 아니라 self를 사용
 
         d = {
-            "img": self.img, 
-            "title": self.title, 
-            "org": self.organize, 
-            "date": self.date, 
-            "link": self.link, 
+            "img": self.img,
+            "title": self.title,
+            "org": self.organize,
+            "date": self.date,
+            "link": self.link,
             "key": self.key
         }
 
         print(f"[debug] item to ditionary {d}")
 
         return d
-    
-
-
-
