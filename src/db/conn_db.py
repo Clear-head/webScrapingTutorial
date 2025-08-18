@@ -1,47 +1,53 @@
 import redis
 from ..classes import ItemList, Item_info
-
+from datetime import datetime
 
 class Conn:
     _instance = None
-    _cursor = None
+    _cursor = None  # 클래스 변수로 변경
     HOST = "192.168.40.131"
     PORT = 6379
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-
-        if cls._cursor is None:
-            cls._cursor = cls.__connect_redis()
+            cls._connect_redis()  # 첫 생성 시에만 연결
         return cls._instance
 
-    # def __init__(self):
-    #     if self._cursor is None:
-    #         self._cursor = self.__connect_redis()
+    def __init__(self):
+        pass
 
     @classmethod
-    def __connect_redis(cls):
-        try:
-            r = redis.Redis(host=cls.HOST, port=cls.PORT)
+    def _connect_redis(cls):
+        if cls._cursor is None:
+            try:
+                r = redis.Redis(host=cls.HOST, port=cls.PORT)
 
-            if r.ping():
-                print("[debug] Redis Connected!")
-                return r
-            else:
-                raise redis.ConnectionError("Fail to Ping")
+                if r.ping():
+                    print("[debug] Redis Connected!")
+                    cls._cursor = r
+                else:
+                    raise redis.ConnectionError("Fail to Ping")
 
-        except redis.ConnectionError as e:
-            print(f"[debug] Redis connect failed, Connection Error: {e}")
-            return None
+            except redis.ConnectionError as e:
+                print(f"[debug] Redis connect failed, Connection Error: {e}")
+                cls._cursor = None
 
-        except Exception as e:
-            print(f"[debug] Redis connect failed, error code: {e}")
-            return None
+            except Exception as e:
+                print(f"[debug] Redis connect failed, error code: {e}")
+                cls._cursor = None
+
+    @classmethod
+    def get_cursor(cls):
+        if cls._cursor is None:
+            cls._connect_redis()
+        return cls._cursor
 
     def insert_contents(self, item):
         print(f"================== Insert contents key: {item.key} ==================")
-        if self._cursor is None:
+        cursor = self.get_cursor()
+
+        if cursor is None:
             print("[debug] Redis cursor is None. 데이터 삽입 불가.")
             return False
 
@@ -50,15 +56,13 @@ class Conn:
             print(f"[debug] insert to redis")
 
             try:
-                self._cursor.sadd("keys", item.key)
+                cursor.sadd("keys", item.key)
                 print(f"[debug] insert key success")
-
             except Exception as e:
                 print(f"[debug] insert key error : {e}")
 
-            self._cursor.hset(item.key, mapping=item.to_dict())
+            cursor.hset(item.key, mapping=item.to_dict())
             print("[debug] 적재 완료")
-
             return True
         else:
             print(f"[debug] 키가 이미 존재합니다.")
@@ -66,11 +70,13 @@ class Conn:
 
     def get_contents(self):
         print("================== Get contents ==================")
-        if self._cursor is None:
+        cursor = self.get_cursor()
+
+        if cursor is None:
             print("[debug] Redis cursor is None. 데이터 조회 불가.")
             return ItemList()
 
-        keys = self._cursor.smembers("keys")
+        keys = cursor.smembers("keys")
         items = ItemList()
 
         if len(keys) <= 0:
@@ -79,7 +85,7 @@ class Conn:
 
         print(f"[debug] find key : count = {len(keys)}")
 
-        pipe = self._cursor.pipeline()
+        pipe = cursor.pipeline()
         for k in keys:
             pipe.hgetall(k)
 
@@ -94,7 +100,7 @@ class Conn:
                     k = k.decode("UTF-8")
                     v = v.decode("UTF-8")
                     item[k] = v
-                # print(f"[debug] get item : {item.items()}")
+                print(f"[debug] get item : {item.items()}")
                 items.add_item(
                     Item_info(
                         img=item["img"],
@@ -109,14 +115,19 @@ class Conn:
         return items
 
     def _check_duplicate_key(self, item_key):
-        isin = self._cursor.sismember("keys", item_key)
+        cursor = self.get_cursor()
+        if cursor is None:
+            return False
+
+        isin = cursor.sismember("keys", item_key)
         print(f"[debug] duplicate check : result = {True if isin else False}")
         return isin
 
+    @classmethod
+    def _analyze_redis_data_types(cls):
+        cursor = cls.get_cursor()
 
-    def _analyze_redis_data_types(self):
-        """Redis 자료구조별 사용량 분석"""
-        if self._cursor is None:
+        if cursor is None:
             print("[debug] Redis cursor is None. 분석 불가.")
             return {
                 'string': 0, 'list': 0, 'set': 0, 'zset': 0,
@@ -136,7 +147,7 @@ class Conn:
 
         # 모든 키 가져오기
         try:
-            keys = self._cursor.keys('*')
+            keys = cursor.keys('*')
             stats['total_keys'] = len(keys)
             print(f"[debug] 총 키 개수: {len(keys)}")
         except Exception as e:
@@ -146,17 +157,16 @@ class Conn:
         for key in keys:
             try:
                 # 키 타입 확인
-                key_type = self._cursor.type(key).decode()
+                key_type = cursor.type(key).decode()
                 if key_type in stats:
                     stats[key_type] += 1
 
                 # 메모리 사용량 확인 (Redis 4.0+)
                 try:
-                    memory = self._cursor.memory_usage(key)
+                    memory = cursor.memory_usage(key)
                     if memory:
                         stats['total_memory'] += memory
                 except Exception as memory_error:
-                    # Redis 버전이 낮거나 MEMORY USAGE를 지원하지 않는 경우
                     print(f"[debug] 메모리 사용량 확인 실패 (키: {key}): {memory_error}")
                     continue
 
@@ -166,9 +176,12 @@ class Conn:
 
         return stats
 
-    def using_redis_info(self):
+    @classmethod
+    def using_redis_info(cls):
         """Redis 사용량 정보 출력"""
-        if self._cursor is None:
+        cursor = cls.get_cursor()
+
+        if cursor is None:
             print("[debug] Redis cursor is None. 정보 조회 불가.")
             return
 
@@ -176,7 +189,7 @@ class Conn:
 
         # 기본 메모리 정보
         try:
-            memory_info = self._cursor.info('memory')
+            memory_info = cursor.info('memory')
             print(f"||\t\t\t\t\t[Redis 메모리 정보]\t\t\t\t||")
             print(f"||\t\t\t\t전체 사용 메모리: {memory_info.get('used_memory_human', 'N/A')}\t\t\t\t||")
             print(f"||\t\t\t\tRSS 메모리: {memory_info.get('used_memory_rss_human', 'N/A')}\t\t\t\t\t||")
@@ -185,10 +198,12 @@ class Conn:
             print(f"[debug] 메모리 정보 조회 실패: {e}")
 
         # 자료구조별 통계
-        stats = self._analyze_redis_data_types()
+        stats = cls._analyze_redis_data_types()
         print("======================[자료구조별 통계]=====================")
         for data_type, count in stats.items():
-            if data_type != 'total_memory' and data_type != 'total_keys':
+            if data_type == 'set':
+                print(f"||\t\t\t\t\t\t{data_type}: {cursor.scard("keys")} (+{count})개\t\t\t\t\t||")
+            elif data_type != 'total_memory' and data_type != 'total_keys':
                 print(f"||\t\t\t\t\t\t{data_type}: {count}개\t\t\t\t\t\t||")
             elif data_type == 'total_keys':
                 print(f"||\t\t\t\t\t\t{data_type}: {count}개\t\t\t\t||")
@@ -200,8 +215,66 @@ class Conn:
 
         print("=" * 58)
 
-    def close(self):
-        """Redis 연결 종료"""
-        if self._cursor:
-            self._cursor.close()
+    @classmethod
+    def del_over_day(cls):
+        print("="*100)
+        print(f"[debug] delete start")
+        cursor = cls.get_cursor()
+
+        if cursor is None:
+            print("No cursor")
+            return None
+
+        cnt = 0
+
+        for key in cursor.scan_iter(match="2000*"):
+
+            try:
+                cursor.delete(key)
+                cursor.srem('keys', key)
+                print(f"deleted: {key.decode('utf-8')}")
+                cnt+=1
+            except Exception as e:
+                print(f"[debug] delete 2000 year failed : {e}")
+                continue
+
+        print(f"[debug] delete complete 2000 year, {cnt} records")
+
+        keys = cursor.smembers("keys")
+
+        if len(keys) == 0:
+            print("[debug] no keys")
+            return None
+
+        cnt = 0
+        for key in keys:
+            try:
+                key_decord = key
+                if isinstance(key, bytes):
+                    key_decord = key.decode('utf-8')
+                key_pre = key_decord[:10]
+                if datetime(int(key_pre[:4]), int(key_pre[5:7]), int(key_pre[8:10])) < datetime.now():
+                    cursor.delete(key)
+                    cursor.srem('keys', key)
+                    print(f"deleted: {key.decode('utf-8')}")
+                    cnt+=1
+            except Exception as e:
+                print(f"[debug] delete failed : {e}, key: {key}")
+                continue
+        print(f"[debug] delete complete , {cnt} records")
+
+        return None
+
+
+    @classmethod
+    def close(cls):
+        if cls._cursor:
+            cls._cursor.close()
+            cls._cursor = None
             print("[debug] Redis 연결 종료")
+
+    @classmethod
+    def reconnect(cls):
+        cls.close()
+        cls._connect_redis()
+        print("[debug] Redis 재연결 완료")

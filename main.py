@@ -41,7 +41,8 @@ if __name__ == "__main__":
     a = conn_db.Conn()
     for i in asyncio.run(asd()):
         a.insert_contents(i)
+    a.del_over_day()
 
     a.using_redis_info()
 
-    uvicorn.run(app, host="127.0.0.1", port = 8000)
+    uvicorn.run(app, host="127.0.0.1", port = 1234)

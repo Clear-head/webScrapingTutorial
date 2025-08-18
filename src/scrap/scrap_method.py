@@ -116,7 +116,7 @@ async def scrap_wivity(content, url):
             date_parts = cards[4].text.strip().split()
             if date_parts:
                 item[3] = date_parts[-1]
-                item[3] = item[3][:2] + str(int(item[3][2:]) - 1)
+                item[3] = item[3][:2] + item[3][2:]
             
             # 홈페이지
             link_parts = cards[7].text.strip().split()
@@ -199,7 +199,7 @@ async def scrap_linkar(session, driver):
         list_content, _ = await fetch_page(session, p)
 
         if not list_content:
-            print(f"[debug] linkereer page {page_cnt} is None")
+            print(f"[debug] linkereer page {p[-1]} is None")
             continue
         try:
             driver.get(p)
@@ -250,7 +250,7 @@ async def scrap_linkar(session, driver):
 
 """
 
-    씽굿
+    씽굿  상세 페이지 url 수집 불가.
 
 """
 async def scrap_thinkGood(session, driver):
@@ -309,10 +309,13 @@ async def scrap_thinkGood(session, driver):
             txts = driver.find_elements(By.CSS_SELECTOR, "div.txt")
 
             for tit, txt in zip(tits, txts):
+
                 if tit.text == "주최":
                     item[2] = txt.text
+
                 elif tit.text == "주관" and tit.text != txt.text:
                     item[2] += " / " + txt.text
+
                 elif tit.text == "홈페이지":
                     item[4] = txt.find_element(By.TAG_NAME, "a").get_attribute("href")
 

@@ -20,14 +20,19 @@ class Item_info(BaseModel):
                 date_obj = datetime.now() + timedelta(days=days)
                 return date_obj.strftime("%Y-%m-%d")
             except ValueError:
-                return "마감"
+                return "2000-01-01"
+
         elif value.startswith("20"):
-            return value
-        return "마감"
+            digits_only = ''.join(filter(lambda x: x.isdigit(), value))
+            if len(digits_only) == 8:  # YYYYMMDD
+                date_obj = datetime.strptime(digits_only, "%Y%m%d")
+                return date_obj.strftime("%Y-%m-%d")
+
+        return "2000-01-01"
 
     @model_validator(mode="after")
     def set_key(self):
-        self.key = sub('^[A-Za-z0-9ㄱ-힣]', '', self.title.replace(" ", ""))
+        self.key = self.date + sub(r'[^A-Za-z0-9ㄱ-힣]', '', self.title.replace(" ", ""))
         return self
 
     def to_dict(self):  # cls가 아니라 self를 사용

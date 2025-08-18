@@ -38,7 +38,7 @@ async def scrap_batch():
     # 동시 연결 수 제한 (서버 부하 방지)
     connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
     timeout = aiohttp.ClientTimeout(total=30)
-    semaphore = asyncio.Semaphore(5)  # 동시 페이지 처리 수 제한
+    semaphore = asyncio.Semaphore(10)  # 동시 페이지 처리 수 제한
     
     
     async with aiohttp.ClientSession(
@@ -60,7 +60,7 @@ async def scrap_batch():
 
         print("========= task 2 start =========")
         page_results.extend(await asyncio.gather(*page_task2, return_exceptions=True))
-        
+
         print("========= task 3 start =========")
         page_results.extend(await asyncio.gather(*page_task3, return_exceptions=True))
         
