@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 수집 중...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .status-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .completed {
+            color: #4CAF50;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 20px 10px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 데이터 수집 중</h1>
+
+        <div id="status-display">
+            {% if status.error %}
+                <div class="error">
+                    <h3>❌ 오류 발생</h3>
+                    <p>{{ status.error }}</p>
+                    <button class="refresh-btn" onclick="location.href='/'">홈으로 돌아가기</button>
+                </div>
+            {% elif status.is_running %}
+                <div class="spinner"></div>
+
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: {{ status.progress }}%"></div>
+                </div>
+
+                <div class="status-info">
+                    <h3>진행률: {{ status.progress }}%</h3>
+                    <p>현재 작업: {{ status.current_site }}</p>
+                    {% if status.last_update %}
+                        <p>마지막 업데이트: {{ status.last_update }}</p>
+                    {% endif %}
+                </div>
+
+                <p>잠시만 기다려주세요. 여러 사이트에서 최신 공모전 정보를 수집하고 있습니다.</p>
+
+            {% elif status.progress == 100 %}
+                <div class="completed">
+                    <h3>✅ 수집 완료!</h3>
+                    <p>{{ status.current_site }}</p>
+                    <button class="refresh-btn" onclick="location.href='/'">결과 보기</button>
+                </div>
+            {% else %}
+                <div class="status-info">
+                    <h3>⏸️ 스크래핑 대기 중</h3>
+                    <p>아직 오늘의 데이터 수집이 시작되지 않았습니다.</p>
+                    {% if status.last_update %}
+                        <p>마지막 업데이트: {{ status.last_update }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 30px;">
+            <button class="refresh-btn" onclick="checkStatus()">상태 새로고침</button>
+            <button class="refresh-btn" onclick="location.href='/'">홈으로</button>
+        </div>
+    </div>
+
+    <script>
+        let checkInterval;
+
+        function checkStatus() {
+            fetch('/api/scraping-status')
+                .then(response => response.json())
+                .then(data => {
+                    updateStatusDisplay(data);
+
+                    // 완료되면 자동으로 홈으로 이동
+                    if (!data.is_running && data.progress === 100) {
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('상태 확인 오류:', error);
+                });
+        }
+
+        function updateStatusDisplay(status) {
+            // 동적으로 상태 업데이트 (간단한 예시)
+            if (status.is_running) {
+                document.querySelector('.progress-bar').style.width = status.progress + '%';
+                // 더 상세한 UI 업데이트 로직 추가 가능
+            }
+        }
+
+        // 스크래핑 중일 때만 자동 새로고침
+        {% if status.is_running %}
+            checkInterval = setInterval(checkStatus, 3000);
+        {% endif %}
+
+        // 페이지 언로드 시 인터벌 정리
+        window.addEventListener('beforeunload', () => {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        });
+    </script>
+</body>
+</html>

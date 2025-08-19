@@ -33,13 +33,9 @@ async def root(request: Request):
 def fail_data(request: Request):
     return templates.TemplateResponse("fail_load.html", {"request":request})
 
-
-async def asd(): 
-        return await scrap_batch()
-
 if __name__ == "__main__":
     a = conn_db.Conn()
-    # for i in asyncio.run(asd()):
+    # for i in asyncio.run(await scrap_batch()):
     #     a.insert_contents(i)
     # a.del_over_day()
     #

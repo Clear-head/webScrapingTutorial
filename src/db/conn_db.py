@@ -33,7 +33,7 @@ class Conn:
                     print("[debug] Redis Connected!")
                     cls._cursor = r
                 else:
-                    raise redis.ConnectionError("Fail to Ping")
+                    raise redis.ConnectionError("[debug] Fail to Ping")
 
             except redis.ConnectionError as e:
                 print(f"[debug] Redis connect failed, Connection Error: {e}")
@@ -45,8 +45,14 @@ class Conn:
 
     @classmethod
     def get_cursor(cls):
+
         if cls._cursor is None:
-            cls._connect_redis()
+            try:
+                cls._connect_redis()
+            except Exception as e:
+                print(f"[debug] Redis connect failed, Connection Error: {e}")
+            finally:
+                return cls._cursor
         return cls._cursor
 
     def insert_contents(self, item):
@@ -186,6 +192,7 @@ class Conn:
     def using_redis_info(cls):
         """Redis 사용량 정보 출력"""
         cursor = cls.get_cursor()
+        cursor.memory_purge()
 
         if cursor is None:
             print("[debug] Redis cursor is None. 정보 조회 불가.")
@@ -197,9 +204,9 @@ class Conn:
         try:
             memory_info = cursor.info('memory')
             print(f"||\t\t\t\t\t[Redis 메모리 정보]\t\t\t\t||")
-            print(f"||\t\t\t\t전체 사용 메모리: {memory_info.get('used_memory_human', 'N/A')}\t\t\t\t||")
-            print(f"||\t\t\t\tRSS 메모리: {memory_info.get('used_memory_rss_human', 'N/A')}\t\t\t\t\t||")
-            print(f"||\t\t\t\t단편화 메모리: {memory_info.get("mem_fragmentation_ratio")}\t\t\t\t\t||")
+            print(f"||\t\t\t\t\t전체 사용 메모리: {memory_info.get('used_memory_human', 'N/A')}\t\t\t||")
+            print(f"||\t\t\t\t\tRSS 메모리: {memory_info.get('used_memory_rss_human', 'N/A')}\t\t\t\t||")
+            print(f"||\t\t\t\t\t단편화 메모리: {memory_info.get("mem_fragmentation_ratio")}\t\t\t\t||")
             print("======================================================")
         except Exception as e:
             print(f"[debug] 메모리 정보 조회 실패: {e}")
@@ -282,6 +289,7 @@ class Conn:
     @classmethod
     def close(cls):
         if cls._cursor:
+            cls._cursor.memory_purge()
             cls._cursor.close()
             cls._cursor = None
             print("[debug] Redis 연결 종료")
@@ -291,3 +299,35 @@ class Conn:
         cls.close()
         cls._connect_redis()
         print("[debug] Redis 재연결 완료")
+
+
+    @classmethod
+    def get_schedule(cls):
+        cursor = cls.get_cursor()
+        if cursor is None:
+            print("[debug] No cursor")
+
+
+        tmp = ""
+        try:
+            tmp = cursor.get("schedule").decode('utf-8')
+            if tmp == "":
+                raise Exception("No schedule")
+        except Exception as e:
+            print(f"[debug] get schedule failed : {e}")
+
+        print("[debug] get schedule complete")
+        return tmp
+
+    @classmethod
+    def set_schedule(cls, schedule):
+        cursor = cls.get_cursor()
+        if cursor is None:
+            print("[debug] No cursor")
+
+        try:
+            cursor.set('schedule', schedule)
+        except Exception as e:
+            print(f"[debug] set schedule failed : {e}")
+            return False
+        return True

@@ -46,8 +46,7 @@ async def scrap_batch():
         connector=connector, 
         timeout=timeout
     ) as session:
-        
-        # 모든 페이지를 동시에 처리
+
         page_task1 = [
             process_wivity_batch(session, url, semaphore) for url in url_list
         ]
