@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from src.scrap import scrap_batch
 from src.db import conn_db
-from src.scedule import SchedulerService
+from src.Scheduler import SchedulerService
 import redis
 import uvicorn
 from contextlib import asynccontextmanager
