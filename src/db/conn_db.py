@@ -1,16 +1,22 @@
 import redis
 from ..classes import ItemList, Item_info
 from datetime import datetime
+from .config import db_config
 
 class Conn:
     _instance = None
-    _cursor = None  # 클래스 변수로 변경
-    HOST = "192.168.40.131"
-    PORT = 6379
+    _cursor = None
+    __config = None
+    __HOST = None
+    __PORT = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+
+            cls.__config = db_config()
+            cls.__HOST, cls.__PORT = cls.__config.get_config()
+
             cls._connect_redis()  # 첫 생성 시에만 연결
         return cls._instance
 
@@ -21,7 +27,7 @@ class Conn:
     def _connect_redis(cls):
         if cls._cursor is None:
             try:
-                r = redis.Redis(host=cls.HOST, port=cls.PORT)
+                r = redis.Redis(host=cls.__HOST, port=cls.__PORT)
 
                 if r.ping():
                     print("[debug] Redis Connected!")
@@ -193,6 +199,7 @@ class Conn:
             print(f"||\t\t\t\t\t[Redis 메모리 정보]\t\t\t\t||")
             print(f"||\t\t\t\t전체 사용 메모리: {memory_info.get('used_memory_human', 'N/A')}\t\t\t\t||")
             print(f"||\t\t\t\tRSS 메모리: {memory_info.get('used_memory_rss_human', 'N/A')}\t\t\t\t\t||")
+            print(f"||\t\t\t\t단편화 메모리: {memory_info.get("mem_fragmentation_ratio")}\t\t\t\t\t||")
             print("======================================================")
         except Exception as e:
             print(f"[debug] 메모리 정보 조회 실패: {e}")
@@ -262,6 +269,12 @@ class Conn:
                 print(f"[debug] delete failed : {e}, key: {key}")
                 continue
         print(f"[debug] delete complete , {cnt} records")
+        try:
+            cursor.memory_purge()
+            print(f"[debug] memory purge complete")
+        except Exception as e:
+            print(f"[debug] memory purge failed : {e}")
+
 
         return None
 

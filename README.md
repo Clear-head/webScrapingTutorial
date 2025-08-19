@@ -4,7 +4,7 @@
 - 제목, 포스터, 기간, 주최기관, 공모 사이트 를 카드형식으로 웹사이트 형식으로 제공
 
 ## 시스템 아키텍쳐
-![시스템아키텍처](./src/resourse/SystemArchitecture.png)
+![시스템아키텍처](./src/resource/SystemArchitecture.png)
 
 
 ## Used stack

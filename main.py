@@ -7,7 +7,7 @@ from src.scrap import scrap_batch
 from src.db import conn_db
 import uvicorn
 
-templates = Jinja2Templates(directory="src/resourse/pages")
+templates = Jinja2Templates(directory="src/resource/pages")
 app = FastAPI()
 
 
@@ -39,10 +39,10 @@ async def asd():
 
 if __name__ == "__main__":
     a = conn_db.Conn()
-    for i in asyncio.run(asd()):
-        a.insert_contents(i)
-    a.del_over_day()
-
+    # for i in asyncio.run(asd()):
+    #     a.insert_contents(i)
+    # a.del_over_day()
+    #
     a.using_redis_info()
-
-    uvicorn.run(app, host="127.0.0.1", port = 1234)
+    #
+    # uvicorn.run(app, host="127.0.0.1", port = 1234)
