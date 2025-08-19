@@ -34,13 +34,6 @@ def daily_scraping_job():
         # 데이터베이스 연결
         cursor = conn_db.Conn()
 
-        # 진행 상태 업데이트
-        redis_conn.hset("scraping_status", mapping={
-            "progress": "10",
-            "current_site": "기존 데이터 정리 중..."
-        })
-        cursor.del_over_day()
-
         # 스크래핑 실행
         redis_conn.hset("scraping_status", mapping={
             "progress": "30",
@@ -59,6 +52,12 @@ def daily_scraping_job():
         for item in items:
             if cursor.insert_contents(item):
                 saved_count += 1
+
+        redis_conn.hset("scraping_status", mapping={
+            "progress": "90",
+            "current_site": "기존 데이터 정리 중..."
+        })
+        cursor.del_over_day()
 
         # 완료 상태 업데이트
         redis_conn.hset("scraping_status", mapping={
@@ -164,17 +163,6 @@ async def get_scraping_status():
         "error": status_raw.get("error", ""),
         "saved_count": status_raw.get("saved_count", "0")
     }
-
-
-@app.post("/manual-scraping")
-async def manual_scraping(background_tasks: BackgroundTasks):
-    """수동 스크래핑 트리거"""
-    status = redis_conn.hgetall("scraping_status")
-    if status.get("is_running") == "true":
-        return {"message": "이미 진행 중", "redirect": "/scraping"}
-
-    background_tasks.add_task(lambda: daily_scraping_job())
-    return RedirectResponse("/scraping")
 
 
 if __name__ == "__main__":
