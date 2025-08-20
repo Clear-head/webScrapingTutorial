@@ -3,7 +3,7 @@ import os
 
 
 
-class db_config:
+class DbConfig:
     def __init__(self):
         self.BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.PATH = os.path.join(self.BASE_DIR, 'resource', 'db_config.json')

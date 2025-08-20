@@ -1,146 +1,65 @@
 import redis
+
+from . import user_connection
 from ..classes import ItemList, Item_info
 from datetime import datetime
-from .config import db_config
+from redis_connection import RedisConnection
 
-class Conn:
+
+class ServerConn(RedisConnection):
     _instance = None
     _cursor = None
-    __config = None
-    __HOST = None
-    __PORT = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-
-            cls.__config = db_config()
-            cls.__HOST, cls.__PORT = cls.__config.get_config()
-
-            cls._connect_redis()  # 첫 생성 시에만 연결
+            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
-        pass
-
-    @classmethod
-    def _connect_redis(cls):
-        if cls._cursor is None:
-            try:
-                r = redis.Redis(host=cls.__HOST, port=cls.__PORT)
-
-                if r.ping():
-                    print("[debug] Redis Connected!")
-                    cls._cursor = r
-                else:
-                    raise redis.ConnectionError("[debug] Fail to Ping")
-
-            except redis.ConnectionError as e:
-                print(f"[debug] Redis connect failed, Connection Error: {e}")
-                cls._cursor = None
-
-            except Exception as e:
-                print(f"[debug] Redis connect failed, error code: {e}")
-                cls._cursor = None
-
-    @classmethod
-    def get_cursor(cls):
-
-        if cls._cursor is None:
-            try:
-                cls._connect_redis()
-            except Exception as e:
-                print(f"[debug] Redis connect failed, Connection Error: {e}")
-            finally:
-                return cls._cursor
-        return cls._cursor
+        if not self._initialized:
+            super().__init__()
+            self._cursor = self._connect_redis()
+            self._initialized = True
 
     def insert_contents(self, item):
         print(f"================== Insert contents key: {item.key} ==================")
         cursor = self.get_cursor()
 
-        if cursor is None:
-            print("[debug] Redis cursor is None. 데이터 삽입 불가.")
+        try:
+            # 중복 체크
+            if not self._check_duplicate_key(item.key):
+                print(f"[Server] insert to redis")
+
+                try:
+                    cursor.sadd("keys", item.key)
+                    print(f"[Server] insert key success")
+                except Exception as e:
+                    print(f"[Server] insert key error : {e}")
+
+                cursor.hset(item.key, mapping=item.to_dict())
+                print("[Server] 적재 완료")
+                return True
+            else:
+                print(f"[Server] 키가 이미 존재합니다.")
+                return False
+        except RedisConnection as e:
+            print(f"[Server] connect error: {e}")
             return False
 
-        # 중복 체크
-        if not self._check_duplicate_key(item.key):
-            print(f"[debug] insert to redis")
-
-            try:
-                cursor.sadd("keys", item.key)
-                print(f"[debug] insert key success")
-            except Exception as e:
-                print(f"[debug] insert key error : {e}")
-
-            cursor.hset(item.key, mapping=item.to_dict())
-            print("[debug] 적재 완료")
-            return True
-        else:
-            print(f"[debug] 키가 이미 존재합니다.")
-            return False
-
-    def get_contents(self):
-        print("================== Get contents ==================")
-        cursor = self.get_cursor()
-
-        if cursor is None:
-            print("[debug] Redis cursor is None. 데이터 조회 불가.")
-            return ItemList()
-
-        keys = cursor.smembers("keys")
-        items = ItemList()
-
-        if len(keys) <= 0:
-            print("[debug] can't find key")
-            return items
-
-        print(f"[debug] find key : count = {len(keys)}")
-
-        pipe = cursor.pipeline()
-        for k in keys:
-            pipe.hgetall(k)
-
-        results = pipe.execute()
-
-        print(f"[debug] find contents : count = {len(results), type(results[0])}")
-
-        for result in results:
-            if result:
-                item = {}
-                for k, v in result.items():
-                    k = k.decode("UTF-8")
-                    v = v.decode("UTF-8")
-                    item[k] = v
-                print(f"[debug] get item : {item.items()}")
-                items.add_item(
-                    Item_info(
-                        img=item["img"],
-                        title=item["title"],
-                        organize=item['org'],
-                        date=item["date"],
-                        link=item["link"]
-                    )
-                )
-
-        print(f"[debug] get contents complete : {len(items)}")
-        return items
 
     def _check_duplicate_key(self, item_key):
         cursor = self.get_cursor()
-        if cursor is None:
-            return False
-
         isin = cursor.sismember("keys", item_key)
-        print(f"[debug] duplicate check : result = {True if isin else False}")
+        print(f"[Server] duplicate check : result = {True if isin else False}")
         return isin
 
-    @classmethod
-    def _analyze_redis_data_types(cls):
-        cursor = cls.get_cursor()
+
+    def _analyze_redis_data_types(self):
+        cursor = self.get_cursor()
 
         if cursor is None:
-            print("[debug] Redis cursor is None. 분석 불가.")
+            print("[Server] Redis cursor is None. 분석 불가.")
             return {
                 'string': 0, 'list': 0, 'set': 0, 'zset': 0,
                 'hash': 0, 'stream': 0, 'total_keys': 0, 'total_memory': 0
@@ -168,12 +87,9 @@ class Conn:
 
         for key in keys:
             try:
-                # 키 타입 확인
                 key_type = cursor.type(key).decode()
                 if key_type in stats:
                     stats[key_type] += 1
-
-                # 메모리 사용량 확인 (Redis 4.0+)
                 try:
                     memory = cursor.memory_usage(key)
                     if memory:
@@ -188,10 +104,13 @@ class Conn:
 
         return stats
 
-    @classmethod
-    def using_redis_info(cls):
-        """Redis 사용량 정보 출력"""
-        cursor = cls.get_cursor()
+    def using_redis_info(self):
+        """
+
+            Redis 사용량 정보 출력
+
+        """
+        cursor = self.get_cursor()
         cursor.memory_purge()
 
         if cursor is None:
@@ -212,7 +131,7 @@ class Conn:
             print(f"[debug] 메모리 정보 조회 실패: {e}")
 
         # 자료구조별 통계
-        stats = cls._analyze_redis_data_types()
+        stats = self._analyze_redis_data_types()
         print("======================[자료구조별 통계]=====================")
         for data_type, count in stats.items():
             if data_type == 'set':
@@ -229,11 +148,10 @@ class Conn:
 
         print("=" * 58)
 
-    @classmethod
-    def del_over_day(cls):
+    def del_over_day(self):
         print("="*100)
         print(f"[debug] delete start")
-        cursor = cls.get_cursor()
+        cursor = self.get_cursor()
 
         if cursor is None:
             print("No cursor")
@@ -285,25 +203,8 @@ class Conn:
 
         return None
 
-
-    @classmethod
-    def close(cls):
-        if cls._cursor:
-            cls._cursor.memory_purge()
-            cls._cursor.close()
-            cls._cursor = None
-            print("[debug] Redis 연결 종료")
-
-    @classmethod
-    def reconnect(cls):
-        cls.close()
-        cls._connect_redis()
-        print("[debug] Redis 재연결 완료")
-
-
-    @classmethod
-    def get_schedule(cls):
-        cursor = cls.get_cursor()
+    def get_schedule(self):
+        cursor = self.get_cursor()
         if cursor is None:
             print("[debug] No cursor")
 
@@ -319,9 +220,8 @@ class Conn:
         print("[debug] get schedule complete")
         return tmp
 
-    @classmethod
-    def set_schedule(cls, schedule):
-        cursor = cls.get_cursor()
+    def set_schedule(self, schedule):
+        cursor = self.get_cursor()
         if cursor is None:
             print("[debug] No cursor")
 
@@ -331,3 +231,51 @@ class Conn:
             print(f"[debug] set schedule failed : {e}")
             return False
         return True
+
+
+
+    # def get_contents(self):
+    #     print("================== Get contents ==================")
+    #     cursor = self.get_cursor()
+    #
+    #     if cursor is None:
+    #         print("[Server] Redis cursor is None. 데이터 조회 불가.")
+    #         return ItemList()
+    #
+    #     keys = cursor.smembers("keys")
+    #     items = ItemList()
+    #
+    #     if len(keys) <= 0:
+    #         print("[Server] can't find key")
+    #         return items
+    #
+    #     print(f"[Server] find key : count = {len(keys)}")
+    #
+    #     pipe = cursor.pipeline()
+    #     for k in keys:
+    #         pipe.hgetall(k)
+    #
+    #     results = pipe.execute()
+    #
+    #     print(f"[Server] find contents : count = {len(results), type(results[0])}")
+    #
+    #     for result in results:
+    #         if result:
+    #             item = {}
+    #             for k, v in result.items():
+    #                 k = k.decode("UTF-8")
+    #                 v = v.decode("UTF-8")
+    #                 item[k] = v
+    #             print(f"[Server] get item : {item.items()}")
+    #             items.add_item(
+    #                 Item_info(
+    #                     img=item["img"],
+    #                     title=item["title"],
+    #                     organize=item['org'],
+    #                     date=item["date"],
+    #                     link=item["link"]
+    #                 )
+    #             )
+    #
+    #     print(f"[Server] get contents complete : {len(items)}")
+    #     return items

@@ -23,7 +23,7 @@ def get_driver():
 
     return driver
 
-async def scrap_batch():
+async def scrap_service():
 
     print("============= Scrap Start =============")
 
@@ -38,7 +38,7 @@ async def scrap_batch():
     # 동시 연결 수 제한 (서버 부하 방지)
     connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
     timeout = aiohttp.ClientTimeout(total=30)
-    semaphore = asyncio.Semaphore(10)  # 동시 페이지 처리 수 제한
+    semaphore = asyncio.Semaphore(10)
     
     
     async with aiohttp.ClientSession(

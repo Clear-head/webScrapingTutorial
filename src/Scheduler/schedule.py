@@ -21,15 +21,6 @@ class SchedulerService:
             interval=86400
         )
 
-        if self.check_last_schedule():
-            next_time2 = datetime.datetime.now() + datetime.timedelta(minutes=5)
-
-            job2 = self.scheduler.schedule(
-                scheduled_time=next_time2,
-                func=func,
-                repeat=1
-            )
-
     def start_task(self):
         pass
 

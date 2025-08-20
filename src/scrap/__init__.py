@@ -1,1 +1,1 @@
-from .batch import scrap_batch
+from .scrap_service import scrap_service
