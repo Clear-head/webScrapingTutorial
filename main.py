@@ -4,41 +4,52 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from selenium.webdriver.common.devtools.v137.runtime import await_promise
+
 from src.scrap import scrap_service, update_scrap_state, daily_scraping_job
 from src.db import server_connection, user_connection, MonitoringRedis, RedisConnection
 from src.Scheduler import SchedulerService
 import uvicorn
 
 templates = Jinja2Templates(directory="src/resource/pages")
-app = FastAPI()
 
-# @asynccontextmanager
-def setup_daily_schedule():
-    """서버 시작 시 일일 스케줄 설정"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+        서버 시작 시 일일 스케줄 설정
+    """
     print("[debug] setup daily schedule")
-    # try:
-    schedule_conn = server_connection.ServerConn()
-    scheduler_service = SchedulerService(schedule_conn)
+    scheduler_service = None
+    try:
+        schedule_conn = server_connection.ServerConn()
+        scheduler_service = SchedulerService(schedule_conn)
 
-    scheduler_service.schedule_task(daily_scraping_job)
+        scheduler_service.schedule_task(daily_scraping_job)
 
-    print("[debug] Daily scraping schedule setup complete")
+        await scheduler_service.start_worker()
 
-    # 초기 상태 설정
+        print("[debug] Daily scraping schedule setup complete")
 
-    update_scrap_state(
-        schedule_conn,
-        {
-            "is_running": "false",
-            "progress": "0",
-            "current_site": "대기 중",
-            "last_update": ""
-        }
-    )
+        # 초기 상태 설정
+        update_scrap_state(
+            schedule_conn,
+            {
+                "is_running": "false",
+                "progress": "0",
+                "current_site": "대기 중",
+                "last_update": ""
+            }
+        )
 
-    # except Exception as e:
-    #     print(f"[debug] Schedule setup failed: {e}")
+    except Exception as e:
+        print(f"[debug] Schedule setup failed: {e}")
 
+    yield
+
+    if scheduler_service.is_running():
+        print("[debug] Daily scraping schedule setup complete")
+        scheduler_service.stop_worker()
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -66,7 +77,9 @@ async def root(request: Request):
 
 @app.get("/scraping")
 async def scraping_page(request: Request):
-    """스크래핑 진행 상황 페이지"""
+    """
+        스크래핑 진행 상황 페이지
+    """
     cursor = user_connection.UserConn()
     status = cursor.get_scraping_status()
 
@@ -79,29 +92,31 @@ async def scraping_page(request: Request):
         "status": status
     })
 
+
 @app.get("/api/scraping-status")
 async def scraping_status():
     cursor = user_connection.UserConn()
     return cursor.get_scraping_status()
+
+
 @app.get("/false")
 def fail_load(request: Request):
     return templates.TemplateResponse("fail_load.html", {"request":request})
 
+
 if __name__ == "__main__":
-    connection = server_connection.ServerConn()
-    scheduler = SchedulerService(connection)
-
-    if scheduler.check_last_schedule():
-        for i in asyncio.run(scrap_service()):
-            connection.insert_contents(i)
-        connection.del_over_day()
-
-    monitor = MonitoringRedis()
-    monitor.using_redis_info()
-
-    setup_daily_schedule()
-
-    connection.close()
-
-    print(f"{datetime.datetime.now()} : server on")
+    # connection = server_connection.ServerConn()
+    # scheduler = SchedulerService(connection)
+    #
+    # if scheduler.check_last_schedule():
+    #     for i in asyncio.run(scrap_service()):
+    #         connection.insert_contents(i)
+    #     connection.del_over_day()
+    #
+    # monitor = MonitoringRedis()
+    # monitor.using_redis_info()
+    #
+    # connection.close()
+    #
+    # print(f"{datetime.datetime.now()} : server on")
     uvicorn.run(app, host="127.0.0.1", port=1234)

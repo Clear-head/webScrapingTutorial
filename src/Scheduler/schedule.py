@@ -1,14 +1,13 @@
 import datetime
-
-from rq import Queue
+import asyncio
+from rq import Queue, Worker
 from rq_scheduler import Scheduler
-from rq import Worker
 
 
 class SchedulerService:
     def __init__(self, conn):
         self.worker = None
-        self.worker_thread = None
+        self.worker_task = None
         self.is_running = False
         self.conn = conn.get_cursor()
         self.queue = Queue(connection=self.conn)
@@ -21,40 +20,39 @@ class SchedulerService:
 
         next_time = datetime.datetime.now() + datetime.timedelta(minutes=1)
 
-        # self.worker.work(with_scheduler=True)
-        job = self.scheduler.schedule(
+        return self.scheduler.schedule(
             scheduled_time=next_time,
             func=func,
             interval=86400
         )
 
-    def start_worker(self):
-        """백그라운드에서 워커 시작"""
+    async def start_worker(self):
         if self.is_running:
-            print("Worker가 이미 실행 중입니다.")
+            print("[schedule] Already running")
             return
 
         self.is_running = True
-        self.worker = Worker(['default'], connection=self.conn)
 
-        # 별도 스레드에서 워커 실행
         def run_worker():
             try:
+                self.worker = Worker(["default"], connection=self.conn)
                 self.worker.work(with_scheduler=True)
-            except KeyboardInterrupt:
-                print("Worker 중단됨")
+
+            except Exception as e:
+                print(f"[schedule] Worker Exception: {e}")
+
             finally:
                 self.is_running = False
+                
+        self.worker_task = asyncio.create_task(
+            asyncio.create_task(run_worker())
+        )
 
-        self.worker_thread = threading.Thread(target=run_worker, daemon=True)
-        self.worker_thread.start()
-        print("RQ Worker 시작됨")
 
-    def start_task(self):
-        pass
-
-    def stop_task(self):
-        pass
+    def stop_worker(self):
+        if self.worker_task and not self.worker_task.done():
+            self.worker_task.cancel()
+        self.is_running = False
 
 
     def check_last_schedule(self):
