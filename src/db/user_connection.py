@@ -1,9 +1,5 @@
-import redis
 from ..classes import ItemList, Item_info
-from datetime import datetime
-from .config import DbConfig
-from redis_connection import RedisConnection
-
+from .redis_connection import  RedisConnection
 
 
 class UserConn(RedisConnection):

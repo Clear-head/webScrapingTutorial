@@ -56,9 +56,16 @@ class RedisConnection:
         self._connect_redis()
         print("[debug] Redis 재연결 완료")
 
-    def check_scraping_status(self, **kwargs):
+    def get_scraping_status(self):
+        cursor = self.get_cursor()
+        status = cursor.hgetall("scraping_status")
+        status_decode = {k.decode('utf-8'): v.decode('utf-8') for k, v in status.items()}
 
-
-        if cursor is None:
-            print("[debug] status check failed, no connection")
-            return False
+        return {
+            "is_running": status_decode.get("is_running", "false") == "true",
+            "progress": int(status_decode.get("progress", 0)),
+            "current_site": status_decode.get("current_site", "대기 중"),
+            "last_update": status_decode.get("last_update", ""),
+            "error": status_decode.get("error", ""),
+            "saved_count": status_decode.get("saved_count", "0")
+        }

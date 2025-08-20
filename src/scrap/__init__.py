@@ -1,1 +1,1 @@
-from .scrap_service import scrap_service
+from .scrap import scrap_service, update_scrap_state, daily_scraping_job
