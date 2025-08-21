@@ -25,7 +25,7 @@ class ItemInfo(BaseModel):
         elif value.startswith("20"):
             digits_only = ''.join(filter(lambda x: x.isdigit(), value))
             if len(digits_only) == 8:  # YYYYMMDD
-                date_obj = datetime.strptime(digits_only, "%Y%m%d")
+                date_obj = datetime.strptime(digits_only, "%Y-%m-%d")
                 return date_obj.strftime("%Y-%m-%d")
 
         return "2000-01-01"

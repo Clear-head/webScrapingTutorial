@@ -3,8 +3,45 @@
 - 요즘것들, 링커리어, 위비티, 씽굿 4개 사이트에서 IT 관련 공모전을 크롤링
 - 제목, 포스터, 기간, 주최기관, 공모 사이트 를 카드형식으로 웹사이트 형식으로 제공
 
+## 구조
+project/   
+├── main.py # FastAPI 애플리케이션   
+├── config/   
+| &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;├── __init__.py   
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;├── settings.py   
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;└── database.py   
+├── core/   
+│   ├── __init__.py   
+│   ├── scheduler.py   
+│   ├── logger.py   
+│   └── exceptions.py   
+├── services/   
+│   ├── __init__.py   
+│   ├── scraper_service.py  
+│   └── data_service.py  
+├── models/  
+│   ├── __init__.py  
+│   ├── contest.py  
+│   └── status.py  
+├── scrapers/  
+│   ├── __init__.py  
+│   ├── base.py  
+│   ├── wevity.py  
+│   ├── allfor.py  
+│   └── linkareer.py  
+├── api/  
+│   ├── __init__.py  
+│   ├── routes/  
+│   │   ├── __init__.py  
+│   │   ├── main.py  
+│   │   ├── admin.py  
+│   │   └── health.py  
+│   └── dependencies.py  
+└── templates/  
+
+
 ## 시스템 아키텍쳐
-![시스템아키텍처](./src/resource/SystemArchitecture.png)
+![시스템아키텍처](resources/SystemArchitecture.png)
 
 
 ## Used stack

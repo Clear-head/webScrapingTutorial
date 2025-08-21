@@ -7,11 +7,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
-from src.scrap import scrap_service, daily_scraping_job
-from src.db import server_connection, user_connection, MonitoringRedis
-from src.Scheduler import SchedulerService
+from src2.scrap import scrap_service, daily_scraping_job
+from src2.db import server_connection, user_connection, MonitoringRedis
+from src2.Scheduler import SchedulerService
 
-templates = Jinja2Templates(directory="src/resource/pages")
+templates = Jinja2Templates(directory="src2/resource/pages")
 
 import multiprocessing
 

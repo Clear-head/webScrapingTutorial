@@ -8,7 +8,7 @@ import aiohttp
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from ..classes.item_list_class import ItemList
-from src.scrap.scrap_method import scrap_allfor, scrap_linkar, process_wivity_batch, scrap_thinkGood
+from src2.scrap.scrap_method import scrap_allfor, scrap_linkar, process_wivity_batch, scrap_thinkGood
 
 HEAD = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -80,7 +80,7 @@ async def scrap_service():
 
 def daily_scraping_job():
     """RQ Worker에서 실행될 스크래핑 작업 - 매개변수 제거"""
-    from src.db import server_connection
+    from src2.db import server_connection
 
     conn = None
     try:
@@ -150,7 +150,7 @@ def daily_scraping_job():
 
         # 다음 스케줄 재등록 (24시간 후)
         try:
-            from src.Scheduler import SchedulerService
+            from src2.Scheduler import SchedulerService
             scheduler_service = SchedulerService(conn)
             next_time = datetime.now() + datetime.timedelta(days=1)
             next_time = next_time.replace(hour=0, minute=1, second=0, microsecond=0)
@@ -167,7 +167,7 @@ def daily_scraping_job():
         # 에러 상태 업데이트
         try:
             if not conn:
-                from src.db import server_connection
+                from src2.db import server_connection
                 conn = server_connection.ServerConn()
 
             update_scrap_state(

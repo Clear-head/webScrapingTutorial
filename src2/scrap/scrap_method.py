@@ -50,7 +50,7 @@ async def scrap_allfor(session):
             dt = obj.select_one("div")
 
             if img is not None:
-                item[0] = img.get("src")
+                item[0] = img.get("src2")
 
             if txt is not None:
                 for t in txt:
@@ -87,8 +87,8 @@ async def scrap_wivity(content, url):
         
         # 이미지
         img_elem = soup.select_one("div.thumb > img")
-        if img_elem and img_elem.get("src"):
-            item[0] = "https://www.wevity.com" + img_elem.get("src")
+        if img_elem and img_elem.get("src2"):
+            item[0] = "https://www.wevity.com" + img_elem.get("src2")
         
         # 제목
         title_elem = soup.select_one("div.tit-area > h6.tit")
@@ -219,11 +219,11 @@ async def scrap_linkar(session, driver):
                 item = [False, False, False, False, False]
                 
                 try:
-                    WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
+                    WebDriverWait(driver, 10).until(lambda d: (("data" not in image.get_attribute("src2").split(":")) or ("data" not in image.get_attribute("srcset").split(":"))))
                 except:
                     continue
 
-                item[0] = image.get_attribute("src") if "data" not in image.get_attribute("src").split(":") else image.get_attribute("srcset")
+                item[0] = image.get_attribute("src2") if "data" not in image.get_attribute("src2").split(":") else image.get_attribute("srcset")
                 item[1] = title.text
                 item[2] = org.text
 
@@ -300,7 +300,7 @@ async def scrap_thinkGood(session, driver):
             item[1] = title
 
             #   이미지
-            img = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "contestimg"))).get_attribute("src")
+            img = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "contestimg"))).get_attribute("src2")
             item[0] = img
 
             #   주최, 링크
