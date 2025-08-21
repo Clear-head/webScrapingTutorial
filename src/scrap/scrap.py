@@ -2,6 +2,8 @@ import asyncio
 import sys
 from datetime import datetime
 
+import datetime
+
 import aiohttp
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -76,13 +78,17 @@ async def scrap_service():
     return all_items if all_items else []
 
 
-def daily_scraping_job(conn):
-    """RQ Worker에서 실행될 스크래핑 작업"""
+def daily_scraping_job():
+    """RQ Worker에서 실행될 스크래핑 작업 - 매개변수 제거"""
+    from src.db import server_connection
+
+    conn = None
     try:
-
-
         print("============= Daily Scraping Job Start =============")
         sys.stdout.flush()
+
+        # 함수 내에서 연결 생성
+        conn = server_connection.ServerConn()
 
         update_scrap_state(
             conn,
@@ -101,7 +107,6 @@ def daily_scraping_job(conn):
                 "current_site": "사이트 수집 중..."
             }
         )
-
 
         items = asyncio.run(scrap_service())
 
@@ -130,7 +135,6 @@ def daily_scraping_job(conn):
         conn.del_over_day()
 
         # 완료 상태 업데이트
-
         update_scrap_state(
             conn,
             {
@@ -142,20 +146,47 @@ def daily_scraping_job(conn):
             }
         )
 
-        conn.close()
-
         print("============= Daily Scraping Job Complete =============")
 
+        # 다음 스케줄 재등록 (24시간 후)
+        try:
+            from src.Scheduler import SchedulerService
+            scheduler_service = SchedulerService(conn)
+            next_time = datetime.now() + datetime.timedelta(days=1)
+            next_time = next_time.replace(hour=0, minute=1, second=0, microsecond=0)
+            scheduler_service.scheduler.schedule(
+                scheduled_time=next_time,
+                func=daily_scraping_job
+            )
+            print(f"[schedule] Next job scheduled for: {next_time}")
+        except Exception as schedule_error:
+            print(f"[schedule] Error scheduling next job: {schedule_error}")
+
     except Exception as e:
-        update_scrap_state(
-            conn,
-            {
-                "is_running": "false",
-                "error": str(e),
-                "current_site": "오류 발생"
-            }
-        )
         print(f"[debug] Daily scraping error: {e}")
+        # 에러 상태 업데이트
+        try:
+            if not conn:
+                from src.db import server_connection
+                conn = server_connection.ServerConn()
+
+            update_scrap_state(
+                conn,
+                {
+                    "is_running": "false",
+                    "error": str(e),
+                    "current_site": "오류 발생"
+                }
+            )
+        except Exception as update_error:
+            print(f"[debug] Error updating error state: {update_error}")
+
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def update_scrap_state(conn, dic):
     cursor = conn.get_cursor()

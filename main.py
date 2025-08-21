@@ -100,6 +100,18 @@ def fail_load(request: Request):
     return templates.TemplateResponse("fail_load.html", {"request":request})
 
 
+@app.post("/api/test-schedule")
+async def test_schedule():
+    """수동으로 스케줄 테스트"""
+    try:
+        conn = server_connection.ServerConn()
+        scheduler_service = SchedulerService(conn)
+        job = scheduler_service.schedule_task(daily_scraping_job)
+        return {"message": f"Job scheduled: {job.id if job else 'No job returned'}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     # connection = server_connection.ServerConn()
     # scheduler = SchedulerService(connection)
@@ -113,8 +125,6 @@ if __name__ == "__main__":
     monitor.using_redis_info()
 
     # connection.close()
-    update_thread = threading.Thread()
-    update_thread.start()
 
     print(f"{datetime.datetime.now()} : server on")
     uvicorn.run(app, host="127.0.0.1", port=1234)
