@@ -1,7 +1,7 @@
 import time
 from re import search
 from bs4 import BeautifulSoup
-from ..classes.Item_class import Item_info
+from ..classes.Item_class import ItemInfo
 from ..classes.item_list_class import ItemList
 from collections import deque
 from selenium.webdriver.common.by import By
@@ -65,7 +65,7 @@ async def scrap_allfor(session):
 
             if None not in item:
                 if not item[3] == "D-day":
-                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft())
+                    new = ItemInfo(img=item[0], title=item[1], organize=item[2], date=item[3], link=links.popleft())
                     
                     items.add_item(new)
                 item = [None, None, None, None]
@@ -125,7 +125,7 @@ async def scrap_wivity(content, url):
         
         # 모든 정보가 있는지 확인
         if all(item):
-            return Item_info(
+            return ItemInfo(
                 img=item[0], 
                 title=item[1], 
                 organize=item[2], 
@@ -236,7 +236,7 @@ async def scrap_linkar(session, driver):
                 item[4] = link.get_attribute("href")
 
                 if all(item):
-                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    new = ItemInfo(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                     items.add_item(new)
 
         except Exception as e:
@@ -339,7 +339,7 @@ async def scrap_thinkGood(session, driver):
                 driver.back()
             finally:
                 if all(item):
-                    new = Item_info(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
+                    new = ItemInfo(img=item[0], title=item[1], organize=item[2], date=item[3], link=item[4])
                     items.add_item(new)
 
         except Exception as e:

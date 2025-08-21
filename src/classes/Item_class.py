@@ -3,7 +3,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from re import sub
 
 
-class Item_info(BaseModel):
+class ItemInfo(BaseModel):
     img: str
     title: str
     organize: str

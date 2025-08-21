@@ -1,4 +1,4 @@
-from ..classes import ItemList, Item_info
+from ..classes import ItemList, ItemInfo
 from .redis_connection import  RedisConnection
 
 
@@ -49,9 +49,9 @@ class UserConn(RedisConnection):
                         k = k.decode("UTF-8")
                         v = v.decode("UTF-8")
                         item[k] = v
-                    print(f"[Server] get item : {item.items()}")
+                    # print(f"[User] get item : {item.items()}")
                     items.add_item(
-                        Item_info(
+                        ItemInfo(
                             img=item["img"],
                             title=item["title"],
                             organize=item['org'],

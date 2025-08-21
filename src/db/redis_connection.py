@@ -21,7 +21,7 @@ class RedisConnection:
                     print("[debug] Redis Connected!")
                     self._cursor = r
                 else:
-                    print(f"[User] Fail to Ping")
+                    print(f"[debug] Fail to Ping")
                     self._cursor = None
 
             except redis.ConnectionError as e:

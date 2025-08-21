@@ -47,7 +47,7 @@ class ServerConn(RedisConnection):
 
     def _check_duplicate_key(self, item_key):
         cursor = self.get_cursor()
-        isin = cursor.sismember("keys", item_key)
+        isin = cursor.sismember("keys", item_key[9:])
         print(f"[Server] duplicate check : result = {True if isin else False}")
         return isin
 
@@ -61,7 +61,7 @@ class ServerConn(RedisConnection):
 
         """
         print("="*100)
-        print(f"[debug] delete start")
+        print(f"[Server] delete start")
         cursor = self.get_cursor()
 
         if cursor is None:
@@ -78,15 +78,15 @@ class ServerConn(RedisConnection):
                 print(f"deleted: {key.decode('utf-8')}")
                 cnt+=1
             except Exception as e:
-                print(f"[debug] delete 2000 year failed : {e}")
+                print(f"[Server] delete 2000 year failed : {e}")
                 continue
 
-        print(f"[debug] delete complete 2000 year, {cnt} records")
+        print(f"[Server] delete complete 2000 year, {cnt} records")
 
         keys = cursor.smembers("keys")
 
         if len(keys) == 0:
-            print("[debug] no keys")
+            print("[Server] no keys")
             return None
 
         cnt = 0
@@ -102,14 +102,14 @@ class ServerConn(RedisConnection):
                     print(f"deleted: {key.decode('utf-8')}")
                     cnt+=1
             except Exception as e:
-                print(f"[debug] delete failed : {e}, key: {key}")
+                print(f"[Server] delete failed : {e}, key: {key}")
                 continue
-        print(f"[debug] delete complete , {cnt} records")
+        print(f"[Server] delete complete , {cnt} records")
         try:
             cursor.memory_purge()
-            print(f"[debug] memory purge complete")
+            print(f"[Server] memory purge complete")
         except Exception as e:
-            print(f"[debug] memory purge failed : {e}")
+            print(f"[Server] memory purge failed : {e}")
 
 
         return None
@@ -122,9 +122,9 @@ class ServerConn(RedisConnection):
             if tmp == "":
                 raise Exception("No schedule")
         except Exception as e:
-            print(f"[debug] get schedule failed : {e}")
+            print(f"[Server] get schedule failed : {e}")
 
-        print("[debug] get schedule complete")
+        print("[Server] get schedule complete")
         return tmp
 
     def set_schedule(self, schedule):
@@ -132,7 +132,7 @@ class ServerConn(RedisConnection):
         try:
             cursor.set('schedule', schedule)
         except Exception as e:
-            print(f"[debug] set schedule failed : {e}")
+            print(f"[Server] set schedule failed : {e}")
             return False
         return True
 

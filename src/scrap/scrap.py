@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from datetime import datetime
 
 import aiohttp
@@ -81,6 +82,7 @@ def daily_scraping_job(conn):
 
 
         print("============= Daily Scraping Job Start =============")
+        sys.stdout.flush()
 
         update_scrap_state(
             conn,

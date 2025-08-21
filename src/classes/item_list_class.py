@@ -1,4 +1,4 @@
-from .Item_class import Item_info
+from .Item_class import ItemInfo
 from typing import List
 
 
@@ -8,7 +8,7 @@ class ItemList:
         # 중복 확인을 위한 고유 식별자 집합
         self._unique_keys = set()
 
-    def add_item(self, item: Item_info):
+    def add_item(self, item: ItemInfo):
 
         if item.key not in self._unique_keys:
             self._items.append(item)
@@ -19,7 +19,7 @@ class ItemList:
     def get_items(self):
         return self._items
 
-    def extends(self, items: List[Item_info]):
+    def extends(self, items: List[ItemInfo]):
         for item in items:
             self.add_item(item)
 

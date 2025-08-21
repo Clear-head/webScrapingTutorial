@@ -8,7 +8,7 @@ class MonitoringRedis:
         cursor = self.conn.get_cursor()
 
         if cursor is None:
-            print("[Server] Redis cursor is None. 분석 불가.")
+            print("[Monitor] Redis cursor is None. 분석 불가.")
             return {
                 'string': 0, 'list': 0, 'set': 0, 'zset': 0,
                 'hash': 0, 'stream': 0, 'total_keys': 0, 'total_memory': 0
@@ -29,9 +29,9 @@ class MonitoringRedis:
         try:
             keys = cursor.keys('*')
             stats['total_keys'] = len(keys)
-            print(f"[debug] 총 키 개수: {len(keys)}")
+            print(f"[Monitor] 총 키 개수: {len(keys)}")
         except Exception as e:
-            print(f"[debug] 키 조회 실패: {e}")
+            print(f"[Monitor] 키 조회 실패: {e}")
             return stats
 
         for key in keys:
@@ -44,11 +44,11 @@ class MonitoringRedis:
                     if memory:
                         stats['total_memory'] += memory
                 except Exception as memory_error:
-                    print(f"[debug] 메모리 사용량 확인 실패 (키: {key}): {memory_error}")
+                    print(f"[Monitor] 메모리 사용량 확인 실패 (키: {key}): {memory_error}")
                     continue
 
             except Exception as key_error:
-                print(f"[debug] 키 분석 실패 (키: {key}): {key_error}")
+                print(f"[Monitor] 키 분석 실패 (키: {key}): {key_error}")
                 continue
 
         return stats
@@ -63,7 +63,7 @@ class MonitoringRedis:
         cursor.memory_purge()
 
         if cursor is None:
-            print("[debug] Redis cursor is None. 정보 조회 불가.")
+            print("[Monitor] Redis cursor is None. 정보 조회 불가.")
             return
 
         print("================== Redis 사용량 분석 ==================")
@@ -77,7 +77,7 @@ class MonitoringRedis:
             print(f"||\t\t\t\t\t단편화 메모리: {memory_info.get("mem_fragmentation_ratio")}\t\t\t\t||")
             print("======================================================")
         except Exception as e:
-            print(f"[debug] 메모리 정보 조회 실패: {e}")
+            print(f"[Monitor] 메모리 정보 조회 실패: {e}")
 
         # 자료구조별 통계
         stats = self._analyze_redis_data_types()

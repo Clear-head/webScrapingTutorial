@@ -1,5 +1,4 @@
 import datetime
-import asyncio
 from rq import Queue, Worker
 from rq_scheduler import Scheduler
 
@@ -7,7 +6,6 @@ from rq_scheduler import Scheduler
 class SchedulerService:
     def __init__(self, conn):
         self.worker = None
-        self.worker_task = None
         self.is_running = False
         self.conn = conn.get_cursor()
         self.queue = Queue(connection=self.conn)
@@ -18,40 +16,28 @@ class SchedulerService:
         # next_time = datetime.datetime.now() + datetime.timedelta(days=1)
         # next_time = next_time.replace(hour=0, minute=1, second=0, microsecond=0)
 
-        next_time = datetime.datetime.now() + datetime.timedelta(minutes=1)
+        next_time = datetime.datetime.now() + datetime.timedelta(seconds=30)
 
-        return self.scheduler.schedule(
+        print(f"[schedule] next scraping time: {next_time}")
+
+        job = self.scheduler.schedule(
             scheduled_time=next_time,
             func=func,
             interval=86400
         )
 
-    async def start_worker(self):
-        if self.is_running:
-            print("[schedule] Already running")
-            return
+        print(f"[schedule] scheduled job")
 
+        return job
+
+    def start_worker(self):
+        self.worker = Worker([self.queue], connection=self.conn)
         self.is_running = True
-
-        def run_worker():
-            try:
-                self.worker = Worker(["default"], connection=self.conn)
-                self.worker.work(with_scheduler=True)
-
-            except Exception as e:
-                print(f"[schedule] Worker Exception: {e}")
-
-            finally:
-                self.is_running = False
-                
-        self.worker_task = asyncio.create_task(
-            asyncio.create_task(run_worker())
-        )
-
+        self.worker.work()
 
     def stop_worker(self):
-        if self.worker_task and not self.worker_task.done():
-            self.worker_task.cancel()
+        if self.worker:
+            self.worker.stop()
         self.is_running = False
 
 
