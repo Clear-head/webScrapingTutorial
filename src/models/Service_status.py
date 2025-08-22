@@ -5,7 +5,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
-class ScrapState(Enum):
+class ScrapStatus(Enum):
     WAITING = "WAITING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
@@ -20,7 +20,7 @@ class SystemStatus(Enum):
 
 
 class ScrapingStatus(BaseModel):
-    state: ScrapState = Field(default=ScrapState.WAITING, description="현재 상태")
+    state: ScrapStatus = Field(default=ScrapStatus.WAITING, description="현재 상태")
     progress: int = Field(default=0, description="진행률", ge=0, le=100)
     current_site: str = Field(default="대기 중", description="현재 처리 중인 사이트")
 
@@ -141,6 +141,7 @@ class ScrapingStatus(BaseModel):
             "success_rate": self.success_rate,
         }
 
+
     @classmethod
     def from_dict(cls, data):
         processed_data = {}
@@ -154,7 +155,7 @@ class ScrapingStatus(BaseModel):
             elif key in ["started_at", "completed_at", "updated_at", "next_run_at"]:
                 processed_data[key] = datetime.fromisoformat(value) if value else None
             elif key == "state":
-                processed_data[key] = ScrapState(value) if value else ScrapState.WAITING
+                processed_data[key] = ScrapStatus(value) if value else ScrapStatus.WAITING
             elif key == "failed_sites":
                 processed_data[key] = value.split(",") if value else []
             elif key == "error_message":
@@ -172,7 +173,7 @@ class ScrapingStatus(BaseModel):
 #   todo: watch here
 
 
-class SiteScrapingResult(BaseModel):
+class ScrapingResult(BaseModel):
     """개별 사이트 스크래핑 결과"""
 
     site_name: str = Field(..., description="사이트 이름")
@@ -182,6 +183,7 @@ class SiteScrapingResult(BaseModel):
     duplicates_count: int = Field(default=0, description="중복 항목 수", ge=0)
     duration_seconds: float = Field(default=0.0, description="소요 시간(초)", ge=0)
     error_message: Optional[str] = Field(None, description="에러 메시지")
+
 
     @property
     def success_rate(self) -> float:
@@ -208,11 +210,13 @@ class SystemHealth(BaseModel):
 
     recent_errors: List[str] = Field(default_factory=list, description="최근 에러 목록")
 
+
     class Config:
         use_enum_values = True
         json_encoders = {
             datetime: lambda v: v.isoformat() if v else None
         }
+
 
     def add_error(self, error_message: str, max_errors: int = 10) -> None:
         """에러 추가 (최대 개수 제한)"""
@@ -220,6 +224,7 @@ class SystemHealth(BaseModel):
         self.recent_errors.insert(0, f"[{timestamp}] {error_message}")
         if len(self.recent_errors) > max_errors:
             self.recent_errors = self.recent_errors[:max_errors]
+
 
     def update_redis_status(self, connected: bool) -> None:
         """Redis 연결 상태 업데이트"""
@@ -233,6 +238,7 @@ class SystemHealth(BaseModel):
         self.total_contests = total
         self.active_contests = active
         self.expired_contests = expired
+
 
     def calculate_status(self) -> SystemStatus:
         """전체 상태 계산"""
@@ -248,6 +254,7 @@ class SystemHealth(BaseModel):
                 return SystemStatus.WARNING
 
         return SystemStatus.NORMAL
+
 
     @property
     def uptime_formatted(self) -> str:

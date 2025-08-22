@@ -13,7 +13,7 @@ class ContestStatus(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class Contest(BaseModel):
+class ContestModel(BaseModel):
     title: str = Field(..., description="제목", min_length=1)
     organization: str = Field(..., description="주최 기관")
     img_url: str = Field(..., description="포스터")
@@ -83,6 +83,7 @@ class Contest(BaseModel):
         """
 
             공모전 상태 계산
+            ACTIVE OR EXPIRED OR UNKNOWN == ERROR
 
         """
         try:
@@ -126,12 +127,15 @@ class Contest(BaseModel):
             "days_remaining": self.days_remaining
         }
 
+
     def is_expired(self) -> bool:
         """만료 여부 확인"""
         return self.status == ContestStatus.EXPIRED
 
+
     def __str__(self) -> str:
         return f"Contest(title='{self.title}', deadline='{self.deadline}', status='{self.status}')"
+
 
     def __repr__(self) -> str:
         return self.__str__()
